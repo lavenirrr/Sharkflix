@@ -88,8 +88,8 @@ main{padding:0 0 100px}
 .modal-close:hover{background:var(--red);color:#fff}
 
 /* VIDEO PLAYER */
-.player-wrap{position:relative;width:100%;background:#000;flex-shrink:0}
-#mainVideo{width:100%;height:auto;max-height:60vh;display:block;background:#000}
+.player-wrap{width:100%;background:#000;flex-shrink:0;border-radius:14px 14px 0 0;overflow:hidden}
+#mainVideo{width:100%;height:auto;max-height:70vh;display:block;background:#000;border-radius:0}
 .player-controls{padding:10px 20px;background:var(--bg3);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .player-nav-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;white-space:nowrap}
 .player-nav-btn:hover:not(:disabled){border-color:var(--red);color:var(--red)}
@@ -237,7 +237,7 @@ main{padding:0 0 100px}
   <div class="modal-box">
     <button class="modal-close" onclick="closePlayer()">✕</button>
     <div class="player-wrap">
-      <video id="mainVideo" controls playsinline webkit-playsinline preload="metadata" style="width:100%;height:100%;display:block;background:#000"></video>
+      <video id="mainVideo" controls playsinline webkit-playsinline preload="metadata"></video>
     </div>
     <div class="autonext-overlay" id="antOverlay" style="position:relative;display:none;background:var(--bg3);border-top:1px solid var(--border);padding:12px 20px">
       <div class="autonext-bar" style="margin-bottom:8px"><div class="autonext-prog" id="antProg"></div></div>
@@ -253,6 +253,10 @@ main{padding:0 0 100px}
       <label class="autonext-toggle" onclick="toggleAutoNext()">
         <div class="toggle-sw on" id="antToggle"></div> Lecture auto
       </label>
+      <button class="player-nav-btn" id="pipBtn" onclick="togglePiP()" title="Mini lecteur">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="11" width="9" height="6" rx="1" fill="currentColor" stroke="none"/></svg>
+        <span id="pipLabel">Mini</span>
+      </button>
       <button class="player-nav-btn" id="nextBtn" onclick="playNext()">
         Suivante <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
@@ -640,8 +644,8 @@ function playVideo(id, queue=null){
   // Mode audio : afficher cover art + cacher l'aspect ratio vidéo
   const pw = document.querySelector('.player-wrap');
   if(isAudio(v)){
-    pw.style.aspectRatio = 'unset';
-    pw.style.minHeight = '220px';
+    pw.style.aspectRatio = '';
+    pw.style.minHeight = '180px';
     pw.style.background = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
     vid.style.display = 'none';
     let audioCover = document.getElementById('audioCover');
@@ -659,10 +663,12 @@ function playVideo(id, queue=null){
       audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
     }
   } else {
-    pw.style.aspectRatio = '16/9';
+    pw.style.aspectRatio = '';
     pw.style.minHeight = '';
     pw.style.background = '#000';
     vid.style.display = 'block';
+    vid.style.height = 'auto';
+    vid.style.maxHeight = '70vh';
     const audioCover = document.getElementById('audioCover');
     if(audioCover) audioCover.style.display = 'none';
   }
@@ -720,10 +726,143 @@ function updNavBtns(){
 
 function closePlayer(){
   cancelAnt();
+  // Quitter PiP si actif
+  if(document.pictureInPictureElement) document.exitPictureInPicture().catch(()=>{});
   vid.pause(); vid.src = '';
   document.getElementById('playerModal').classList.remove('open');
   document.body.style.overflow = '';
   currentId = null;
+}
+
+// ── PICTURE IN PICTURE ──
+async function togglePiP(){
+  // Pour les MP3 : PiP audio via MediaSession + mini player custom flottant
+  const v = videos.find(x => x.id === currentId);
+  if(v && isAudio(v)){
+    toggleAudioMini(v);
+    return;
+  }
+  // Pour les vidéos : PiP natif
+  if(!document.pictureInPictureEnabled){
+    showToast('⚠️ PiP non supporté sur ce navigateur');
+    return;
+  }
+  try{
+    if(document.pictureInPictureElement){
+      await document.exitPictureInPicture();
+      document.getElementById('pipLabel').textContent = 'Mini';
+    } else {
+      await vid.requestPictureInPicture();
+      document.getElementById('pipLabel').textContent = 'Quitter';
+      // Fermer la modal mais garder la vidéo en PiP
+      document.getElementById('playerModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  } catch(e){ showToast('⚠️ Impossible d'activer le mini lecteur'); }
+}
+
+// Quand on quitte le PiP (bouton X de la fenêtre PiP)
+vid.addEventListener('leavepictureinpicture', () => {
+  document.getElementById('pipLabel').textContent = 'Mini';
+  // Réouvrir la modal
+  if(currentId){
+    document.getElementById('playerModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+});
+
+// ── MINI PLAYER AUDIO (flottant, pour les MP3) ──
+let miniPlayer = null;
+function toggleAudioMini(v){
+  if(miniPlayer){
+    closeMiniPlayer();
+    return;
+  }
+  // Fermer la modal mais garder la lecture
+  document.getElementById('playerModal').classList.remove('open');
+  document.body.style.overflow = '';
+
+  miniPlayer = document.createElement('div');
+  miniPlayer.id = 'miniPlayer';
+  miniPlayer.style.cssText = `
+    position:fixed;bottom:20px;right:16px;z-index:999;
+    width:280px;background:var(--bg2);
+    border:1px solid var(--border);border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.8);
+    overflow:hidden;cursor:grab;user-select:none;
+  `;
+  const coverHtml = v.coverUrl
+    ? `<img src="${v.coverUrl}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0">`
+    : `<div style="width:52px;height:52px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎵</div>`;
+  miniPlayer.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+      ${coverHtml}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.category}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button id="miniPlayBtn" onclick="toggleMiniPlay()" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:20px;padding:4px;line-height:1">⏸</button>
+        <button onclick="closeMiniPlayer()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;line-height:1">✕</button>
+      </div>
+    </div>
+    <div style="height:2px;background:rgba(255,255,255,.1);margin:0 12px 10px">
+      <div id="miniProgress" style="height:100%;background:var(--red);width:0%;transition:width .5s linear"></div>
+    </div>
+  `;
+  document.body.appendChild(miniPlayer);
+
+  // Mise à jour de la barre de progression
+  vid.addEventListener('timeupdate', updateMiniProgress);
+
+  // Drag to move
+  makeDraggable(miniPlayer);
+  document.getElementById('pipLabel').textContent = 'Agrandir';
+  showToast('🎵 Mini lecteur activé');
+}
+
+function updateMiniProgress(){
+  const bar = document.getElementById('miniProgress');
+  if(bar && vid.duration) bar.style.width = (vid.currentTime/vid.duration*100)+'%';
+}
+
+function toggleMiniPlay(){
+  if(vid.paused){ vid.play(); document.getElementById('miniPlayBtn').textContent='⏸'; }
+  else { vid.pause(); document.getElementById('miniPlayBtn').textContent='▶'; }
+}
+
+function closeMiniPlayer(){
+  if(!miniPlayer) return;
+  vid.removeEventListener('timeupdate', updateMiniProgress);
+  miniPlayer.remove();
+  miniPlayer = null;
+  document.getElementById('pipLabel').textContent = 'Mini';
+  // Réouvrir si lecture en cours
+  if(currentId){
+    document.getElementById('playerModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function makeDraggable(el){
+  let startX, startY, origX, origY;
+  el.addEventListener('pointerdown', e => {
+    if(e.target.tagName==='BUTTON') return;
+    startX=e.clientX; startY=e.clientY;
+    const r=el.getBoundingClientRect();
+    origX=r.left; origY=r.top;
+    el.style.cursor='grabbing';
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if(e.buttons!==1) return;
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    const nx=Math.max(0,Math.min(window.innerWidth-el.offsetWidth, origX+dx));
+    const ny=Math.max(0,Math.min(window.innerHeight-el.offsetHeight, origY+dy));
+    el.style.left=nx+'px'; el.style.top=ny+'px';
+    el.style.right='auto'; el.style.bottom='auto';
+  });
+  el.addEventListener('pointerup', ()=>{ el.style.cursor='grab'; });
 }
 
 function toggleAutoNext(){
