@@ -84,15 +84,12 @@ main{padding:0 0 100px}
 .modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.95);align-items:center;justify-content:center;padding:16px}
 .modal.open{display:flex}
 .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:980px;overflow:hidden;position:relative;max-height:95vh;display:flex;flex-direction:column}
-.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:980px;overflow:visible;position:relative;max-height:95vh;display:flex;flex-direction:column;overflow-y:auto}
 .modal-close{position:absolute;top:12px;right:12px;z-index:10;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;transition:.15s}
 .modal-close:hover{background:var(--red);color:#fff}
 
 /* VIDEO PLAYER */
 .player-wrap{position:relative;width:100%;background:#000;aspect-ratio:16/9;flex-shrink:0}
 #mainVideo{width:100%;height:100%;display:block;background:#000}
-.player-wrap{position:relative;width:100%;background:#000;flex-shrink:0}
-#mainVideo{width:100%;height:auto;max-height:60vh;display:block;background:#000}
 .player-controls{padding:10px 20px;background:var(--bg3);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .player-nav-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;white-space:nowrap}
 .player-nav-btn:hover:not(:disabled){border-color:var(--red);color:var(--red)}
@@ -110,7 +107,6 @@ main{padding:0 0 100px}
 
 /* AUTONEXT OVERLAY */
 .autonext-overlay{display:none;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.95),transparent);padding:20px;z-index:5}
-.autonext-overlay{display:none;padding:12px 20px;background:var(--bg3);border-top:1px solid var(--border)}
 .autonext-overlay.show{display:block}
 .autonext-bar{height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-bottom:10px;overflow:hidden}
 .autonext-prog{height:100%;background:var(--red);border-radius:2px;width:0;transition:width 5s linear}
@@ -241,6 +237,7 @@ main{padding:0 0 100px}
   <div class="modal-box">
     <button class="modal-close" onclick="closePlayer()">✕</button>
     <div class="player-wrap">
+      <video id="mainVideo" playsinline webkit-playsinline preload="metadata"></video>
       <video id="mainVideo" controls playsinline webkit-playsinline preload="metadata" style="width:100%;height:100%;display:block;background:#000"></video>
       <div class="autonext-overlay" id="antOverlay">
         <div class="autonext-bar"><div class="autonext-prog" id="antProg"></div></div>
@@ -248,12 +245,6 @@ main{padding:0 0 100px}
           <span class="autonext-txt" id="antTxt">Prochaine vidéo...</span>
           <button class="autonext-cancel" onclick="cancelAnt()">Annuler</button>
         </div>
-    </div>
-    <div class="autonext-overlay" id="antOverlay" style="position:relative;display:none;background:var(--bg3);border-top:1px solid var(--border);padding:12px 20px">
-      <div class="autonext-bar" style="margin-bottom:8px"><div class="autonext-prog" id="antProg"></div></div>
-      <div class="autonext-info">
-        <span class="autonext-txt" id="antTxt">Prochaine vidéo...</span>
-        <button class="autonext-cancel" onclick="cancelAnt()">Annuler</button>
       </div>
     </div>
     <div class="player-controls">
@@ -384,6 +375,7 @@ async function loadFromDB(){
     category: row.category,
     size: row.size,
     mediaType: row.mediaType || 'video',
+    url: URL.createObjectURL(row.blob)
     url: URL.createObjectURL(row.blob),
     coverUrl: row.coverBlob ? URL.createObjectURL(row.coverBlob) : null
   }));
@@ -407,6 +399,8 @@ let pendingCover = null; // blob cover en attente
 function nextCatPick(){
   if(catQueueIdx >= catQueue.length){
     render();
+    showToast(`✅ ${catQueue.length} vidéo${catQueue.length>1?'s':''} sauvegardée${catQueue.length>1?'s':''} !`);
+    catQueue=[];
     showToast(`✅ ${catQueue.length} fichier${catQueue.length>1?'s':''} sauvegardé${catQueue.length>1?'s':''} !`);
     catQueue=[]; pendingCat=null; pendingCover=null;
     return;
@@ -418,8 +412,11 @@ function nextCatPick(){
 }
 
 function setCat(cat){
+  const f = catQueue[catQueueIdx];
+  catQueueIdx++;
   pendingCat = cat;
   document.getElementById('catModal').classList.remove('open');
+  addVideo(f, cat).then(() => setTimeout(nextCatPick, 80));
   // Passer à l'étape cover
   setTimeout(() => openCoverModal(), 80);
 }
@@ -431,6 +428,7 @@ function setCatCustom(){
 
 document.getElementById('catCustomInput').addEventListener('keydown', e => { if(e.key==='Enter') setCatCustom(); });
 
+async function addVideo(file, category){
 // ── COVER FLOW ──
 function openCoverModal(){
   const f = catQueue[catQueueIdx];
@@ -483,11 +481,13 @@ async function addVideo(file, category, coverFile=null){
     category,
     size: file.size,
     mediaType,
+    blob
     blob,
     coverBlob
   };
   const id = await dbAdd(record);
   const url = URL.createObjectURL(blob);
+  videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url });
   const coverUrl = coverBlob ? URL.createObjectURL(coverBlob) : null;
   videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url, coverUrl });
   idCounter = Math.max(idCounter, id);
@@ -539,6 +539,10 @@ function renderHero(){
   }
   const v = videos[0];
   h.style.backgroundImage = '';
+  // Essayer de générer une miniature via canvas
+  generateThumb(v.url).then(img => {
+    if(img) h.style.backgroundImage = `url(${img})`;
+  });
   if(v.coverUrl){
     h.style.backgroundImage = `url(${v.coverUrl})`;
   } else if(!isAudio(v)){
@@ -579,6 +583,7 @@ function cardHTML(v){
   return `<div class="video-card" onclick="playVideo(${v.id})">
     <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
       <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
+      ${!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:''}
       ${v.coverUrl
         ? `<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" alt="">`
         : !isAudio(v) ? `<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>` : ''}
@@ -662,10 +667,14 @@ function playVideo(id, queue=null){
       audioCover = document.createElement('div');
       audioCover.id = 'audioCover';
       audioCover.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';
+      audioCover.innerHTML = `<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite" id="audioDisk">🎵</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
       audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
       pw.appendChild(audioCover);
     } else {
       audioCover.style.display = 'flex';
+      audioCover.querySelector('#audioDisk').style.animationPlayState = 'running';
+      audioCover.querySelector('div:last-child').textContent = v.name;
       audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
     }
   } else {
@@ -702,7 +711,6 @@ function showAntOverlay(){
   const p = document.getElementById('antProg');
   document.getElementById('antTxt').textContent = `Suivant : ${next.name}`;
   o.classList.add('show');
-  o.style.display='block';
   p.style.transition = 'none'; p.style.width = '0';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     p.style.transition = 'width 5s linear';
@@ -789,6 +797,7 @@ const thumbObserver = new IntersectionObserver(entries => {
       if(idMatch){
         const vid_id = parseInt(idMatch.id.replace('canvas-',''));
         const v = videos.find(x => x.id === vid_id);
+        if(v && !isAudio(v)){
         if(v && !isAudio(v) && !v.coverUrl){
           generateThumb(v.url).then(img => {
             if(!img) return;
