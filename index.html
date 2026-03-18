@@ -61,7 +61,6 @@ main{padding:0 0 100px}
 .video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.thumb-wrap video.thumb-vid{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2}
 .video-card:hover .video-overlay{background:rgba(0,0,0,.4)}
@@ -102,8 +101,6 @@ main{padding:0 0 100px}
 .modal-info{padding:16px 24px}
 .modal-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin-bottom:4px}
 .modal-sub{font-size:13px;color:var(--muted)}
-.progress-bar-wrap{width:100%;height:3px;background:rgba(255,255,255,.1);position:absolute;bottom:0;left:0;cursor:pointer}
-.progress-bar{height:100%;background:var(--red);width:0%;transition:width .5s linear;pointer-events:none}
 
 /* AUTONEXT OVERLAY */
 .autonext-overlay{display:none;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.95),transparent);padding:20px;z-index:5}
@@ -237,7 +234,7 @@ main{padding:0 0 100px}
   <div class="modal-box">
     <button class="modal-close" onclick="closePlayer()">✕</button>
     <div class="player-wrap">
-      <video id="mainVideo" playsinline webkit-playsinline preload="metadata"></video>
+      <!-- FIX: un seul élément video avec controls -->
       <video id="mainVideo" controls playsinline webkit-playsinline preload="metadata" style="width:100%;height:100%;display:block;background:#000"></video>
       <div class="autonext-overlay" id="antOverlay">
         <div class="autonext-bar"><div class="autonext-prog" id="antProg"></div></div>
@@ -309,21 +306,22 @@ main{padding:0 0 100px}
 
 <script>
 // ── STATE ──
-let videos = [];       // {id, name, category, url, size}
+let videos    = [];
 let playQueue = [];
-let playIdx = 0;
-let autoNext = true;
-let antTimer = null;
+let playIdx   = 0;
+let autoNext  = true;
+let antTimer  = null;
 let currentId = null;
-let catQueue = [];
+let catQueue  = [];
 let catQueueIdx = 0;
-let idCounter = 0;
+let pendingCat   = null;
+let pendingCover = null;
 
 // ── INDEXEDDB ──
 let db;
-const DB_NAME = 'sharkflix';
-const DB_VERSION = 1;
-const STORE = 'videos';
+const DB_NAME  = 'sharkflix';
+const DB_VERSION = 2;   // bump pour la migration coverBlob
+const STORE    = 'videos';
 
 function initDB(){
   return new Promise((resolve, reject) => {
@@ -335,89 +333,83 @@ function initDB(){
       }
     };
     req.onsuccess = e => { db = e.target.result; resolve(); };
-    req.onerror = () => reject(req.error);
+    req.onerror   = () => reject(req.error);
   });
 }
 
 function dbAdd(record){
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE,'readwrite');
+    const tx  = db.transaction(STORE, 'readwrite');
     const req = tx.objectStore(STORE).add(record);
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror   = () => reject(req.error);
   });
 }
 
 function dbGetAll(){
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE,'readonly');
+    const tx  = db.transaction(STORE, 'readonly');
     const req = tx.objectStore(STORE).getAll();
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror   = () => reject(req.error);
   });
 }
 
 function dbDelete(id){
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE,'readwrite');
+    const tx  = db.transaction(STORE, 'readwrite');
     const req = tx.objectStore(STORE).delete(id);
     req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+    req.onerror   = () => reject(req.error);
   });
 }
 
 async function loadFromDB(){
   const rows = await dbGetAll();
-  // Recréer les object URLs depuis les blobs stockés
+  // FIX: objet correct, sans doublon de propriété
   videos = rows.reverse().map(row => ({
-    id: row.id,
-    name: row.name,
-    category: row.category,
-    size: row.size,
+    id       : row.id,
+    name     : row.name,
+    category : row.category,
+    size     : row.size,
     mediaType: row.mediaType || 'video',
-    url: URL.createObjectURL(row.blob)
-    url: URL.createObjectURL(row.blob),
-    coverUrl: row.coverBlob ? URL.createObjectURL(row.coverBlob) : null
+    url      : URL.createObjectURL(row.blob),
+    coverUrl : row.coverBlob ? URL.createObjectURL(row.coverBlob) : null
   }));
-  if(videos.length) idCounter = Math.max(...videos.map(v=>v.id));
   render();
 }
 
 // ── FILE IMPORT ──
 document.getElementById('fileInput').addEventListener('change', function(e){
-  const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+  const files = Array.from(e.target.files).filter(f =>
+    f.type.startsWith('video/') || f.type.startsWith('audio/')
+  );
   if(!files.length){ showToast('❌ Aucun fichier vidéo sélectionné'); return; }
-  catQueue = files;
+  catQueue    = files;
   catQueueIdx = 0;
   nextCatPick();
-  this.value = '';
+  this.value  = '';
 });
 
-let pendingCat = null;   // catégorie choisie en attente de la cover
-let pendingCover = null; // blob cover en attente
-
+// ── FLOW : catégorie → cover → enregistrement ──
 function nextCatPick(){
   if(catQueueIdx >= catQueue.length){
+    const n = catQueue.length;
     render();
-    showToast(`✅ ${catQueue.length} vidéo${catQueue.length>1?'s':''} sauvegardée${catQueue.length>1?'s':''} !`);
-    catQueue=[];
-    showToast(`✅ ${catQueue.length} fichier${catQueue.length>1?'s':''} sauvegardé${catQueue.length>1?'s':''} !`);
-    catQueue=[]; pendingCat=null; pendingCover=null;
+    showToast(`✅ ${n} fichier${n>1?'s':''} sauvegardé${n>1?'s':''} !`);
+    catQueue = []; pendingCat = null; pendingCover = null;
     return;
   }
   const f = catQueue[catQueueIdx];
   document.getElementById('catModalSub').textContent = `"${cleanName(f.name)}"`;
-  document.getElementById('catCustomInput').value = '';
+  document.getElementById('catCustomInput').value    = '';
   document.getElementById('catModal').classList.add('open');
 }
 
+// FIX: setCat ne fait que mémoriser la catégorie et ouvrir la modale cover
 function setCat(cat){
-  const f = catQueue[catQueueIdx];
-  catQueueIdx++;
   pendingCat = cat;
   document.getElementById('catModal').classList.remove('open');
-  addVideo(f, cat).then(() => setTimeout(nextCatPick, 80));
-  // Passer à l'étape cover
   setTimeout(() => openCoverModal(), 80);
 }
 
@@ -426,15 +418,16 @@ function setCatCustom(){
   setCat(v || 'Autre');
 }
 
-document.getElementById('catCustomInput').addEventListener('keydown', e => { if(e.key==='Enter') setCatCustom(); });
+document.getElementById('catCustomInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter') setCatCustom();
+});
 
-async function addVideo(file, category){
 // ── COVER FLOW ──
 function openCoverModal(){
   const f = catQueue[catQueueIdx];
   pendingCover = null;
-  document.getElementById('coverModalSub').textContent = `"${cleanName(f.name)}"`;
-  document.getElementById('coverPreviewWrap').style.display = 'none';
+  document.getElementById('coverModalSub').textContent         = `"${cleanName(f.name)}"`;
+  document.getElementById('coverPreviewWrap').style.display    = 'none';
   document.getElementById('coverModal').classList.add('open');
 }
 
@@ -447,8 +440,7 @@ document.getElementById('coverInput').addEventListener('change', function(e){
   if(!file) return;
   pendingCover = file;
   const url = URL.createObjectURL(file);
-  const img = document.getElementById('coverPreview');
-  img.src = url;
+  document.getElementById('coverPreview').src            = url;
   document.getElementById('coverPreviewWrap').style.display = 'block';
   this.value = '';
 });
@@ -464,6 +456,7 @@ function skipCover(){
   proceedAdd();
 }
 
+// FIX: proceedAdd est le seul endroit qui avance l'index et appelle addVideo
 function proceedAdd(){
   const f = catQueue[catQueueIdx];
   catQueueIdx++;
@@ -471,35 +464,30 @@ function proceedAdd(){
 }
 
 async function addVideo(file, category, coverFile=null){
-  const blob = file;
-  const mediaType = file.type.startsWith('audio/') ? 'audio' : 'video';
-  // Lire le cover comme ArrayBuffer pour le stocker en IndexedDB
-  let coverBlob = null;
-  if(coverFile) coverBlob = coverFile;
+  const mediaType  = file.type.startsWith('audio/') ? 'audio' : 'video';
+  const coverBlob  = coverFile || null;
+  // FIX: objet record sans doublon de propriété
   const record = {
-    name: cleanName(file.name),
+    name     : cleanName(file.name),
     category,
-    size: file.size,
+    size     : file.size,
     mediaType,
-    blob
-    blob,
+    blob     : file,
     coverBlob
   };
-  const id = await dbAdd(record);
-  const url = URL.createObjectURL(blob);
-  videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url });
+  const id       = await dbAdd(record);
+  const url      = URL.createObjectURL(file);
   const coverUrl = coverBlob ? URL.createObjectURL(coverBlob) : null;
   videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url, coverUrl });
-  idCounter = Math.max(idCounter, id);
 }
 
 async function deleteVideo(id){
   await dbDelete(id);
-  const v = videos.find(x=>x.id===id);
-  if(v && v.url) URL.revokeObjectURL(v.url);
+  const v = videos.find(x => x.id === id);
+  if(v && v.url)      URL.revokeObjectURL(v.url);
   if(v && v.coverUrl) URL.revokeObjectURL(v.coverUrl);
-  videos = videos.filter(x=>x.id!==id);
-  if(currentId===id) closePlayer();
+  videos = videos.filter(x => x.id !== id);
+  if(currentId === id) closePlayer();
   render();
   showToast('🗑️ Vidéo supprimée');
 }
@@ -511,8 +499,8 @@ function cleanName(n){
 }
 
 function fmtSize(b){
-  if(b>1e9) return (b/1e9).toFixed(1)+' Go';
-  if(b>1e6) return (b/1e6).toFixed(0)+' Mo';
+  if(b > 1e9) return (b/1e9).toFixed(1)+' Go';
+  if(b > 1e6) return (b/1e6).toFixed(0)+' Mo';
   return (b/1e3).toFixed(0)+' Ko';
 }
 
@@ -539,10 +527,6 @@ function renderHero(){
   }
   const v = videos[0];
   h.style.backgroundImage = '';
-  // Essayer de générer une miniature via canvas
-  generateThumb(v.url).then(img => {
-    if(img) h.style.backgroundImage = `url(${img})`;
-  });
   if(v.coverUrl){
     h.style.backgroundImage = `url(${v.coverUrl})`;
   } else if(!isAudio(v)){
@@ -580,13 +564,15 @@ function renderCats(){
 }
 
 function cardHTML(v){
+  const thumbEl = v.coverUrl
+    ? `<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" alt="">`
+    : !isAudio(v)
+      ? `<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`
+      : '';
   return `<div class="video-card" onclick="playVideo(${v.id})">
     <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
       <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
-      ${!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:''}
-      ${v.coverUrl
-        ? `<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" alt="">`
-        : !isAudio(v) ? `<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>` : ''}
+      ${thumbEl}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <button class="card-del-btn" onclick="event.stopPropagation();deleteVideo(${v.id})" title="Supprimer">🗑️</button>
@@ -612,9 +598,9 @@ function generateThumb(url, time=3){
     vid.addEventListener('seeked', () => {
       try{
         const c = document.createElement('canvas');
-        c.width=320; c.height=180;
-        c.getContext('2d').drawImage(vid,0,0,320,180);
-        const d = c.toDataURL('image/jpeg',.7);
+        c.width = 320; c.height = 180;
+        c.getContext('2d').drawImage(vid, 0, 0, 320, 180);
+        const d = c.toDataURL('image/jpeg', .7);
         thumbCache[url] = d;
         resolve(d);
       }catch{ resolve(null); }
@@ -623,19 +609,32 @@ function generateThumb(url, time=3){
   });
 }
 
-function loadCardThumbs(){
-  videos.forEach(v => {
-    const canvas = document.getElementById(`canvas-${v.id}`);
-    if(!canvas) return;
-    generateThumb(v.url).then(img => {
-      if(!img) return;
-      const ctx = canvas.getContext('2d');
-      const image = new Image();
-      image.onload = () => { ctx.drawImage(image,0,0,320,180); canvas.style.opacity='1'; };
-      image.src = img;
-    });
+// FIX: thumbObserver avec accolades correctement fermées
+const thumbObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      const card    = entry.target;
+      const canvas  = card.querySelector('canvas[id^="canvas-"]');
+      if(canvas){
+        const vid_id = parseInt(canvas.id.replace('canvas-', ''));
+        const v      = videos.find(x => x.id === vid_id);
+        if(v && !isAudio(v) && !v.coverUrl){
+          generateThumb(v.url).then(img => {
+            if(!img) return;
+            const ctx   = canvas.getContext('2d');
+            const image = new Image();
+            image.onload = () => {
+              ctx.drawImage(image, 0, 0, 320, 180);
+              canvas.style.opacity = '1';
+            };
+            image.src = img;
+          });
+          thumbObserver.unobserve(card);
+        }
+      }
+    }
   });
-}
+}, {rootMargin:'100px'});
 
 // ── PLAYER ──
 const vid = document.getElementById('mainVideo');
@@ -643,45 +642,40 @@ const vid = document.getElementById('mainVideo');
 function playVideo(id, queue=null){
   const v = videos.find(x => x.id === id);
   if(!v) return;
-  if(queue){ playQueue=queue; playIdx=queue.indexOf(id); }
-  else{ playQueue=videos.map(x=>x.id); playIdx=playQueue.indexOf(id); }
+  if(queue){ playQueue = queue; playIdx = queue.indexOf(id); }
+  else      { playQueue = videos.map(x => x.id); playIdx = playQueue.indexOf(id); }
   currentId = id;
   cancelAnt();
   vid.src = v.url;
   vid.load();
   vid.play().catch(()=>{});
   document.getElementById('playerTitle').textContent = v.name;
-  document.getElementById('playerSub').textContent = (isAudio(v)?'🎵 Audio':'🎬 Vidéo') + ' · ' + v.category + ' · ' + fmtSize(v.size);
-  // Mode audio : afficher cover art + cacher l'aspect ratio vidéo
+  document.getElementById('playerSub').textContent   = (isAudio(v)?'🎵 Audio':'🎬 Vidéo') + ' · ' + v.category + ' · ' + fmtSize(v.size);
+
   const pw = document.querySelector('.player-wrap');
   if(isAudio(v)){
-    pw.style.aspectRatio = 'unset';
-    pw.style.minHeight = '220px';
-    pw.style.background = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
-    vid.style.display = 'none';
-    let audioCover = document.getElementById('audioCover');
+    pw.style.aspectRatio  = 'unset';
+    pw.style.minHeight    = '220px';
+    pw.style.background   = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
+    vid.style.display     = 'none';
     const diskHtml = v.coverUrl
       ? `<img src="${v.coverUrl}" id="audioDisk" style="width:120px;height:120px;border-radius:12px;object-fit:cover;box-shadow:0 8px 32px rgba(0,0,0,.6)">`
       : `<div id="audioDisk" style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite">🎵</div>`;
+    let audioCover = document.getElementById('audioCover');
     if(!audioCover){
-      audioCover = document.createElement('div');
+      audioCover    = document.createElement('div');
       audioCover.id = 'audioCover';
       audioCover.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';
-      audioCover.innerHTML = `<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite" id="audioDisk">🎵</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
-      audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
       pw.appendChild(audioCover);
     } else {
       audioCover.style.display = 'flex';
-      audioCover.querySelector('#audioDisk').style.animationPlayState = 'running';
-      audioCover.querySelector('div:last-child').textContent = v.name;
-      audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
     }
+    audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
   } else {
-    pw.style.aspectRatio = '16/9';
-    pw.style.minHeight = '';
-    pw.style.background = '#000';
-    vid.style.display = 'block';
+    pw.style.aspectRatio  = '16/9';
+    pw.style.minHeight    = '';
+    pw.style.background   = '#000';
+    vid.style.display     = 'block';
     const audioCover = document.getElementById('audioCover');
     if(audioCover) audioCover.style.display = 'none';
   }
@@ -691,7 +685,7 @@ function playVideo(id, queue=null){
 }
 
 vid.addEventListener('ended', () => {
-  if(!autoNext || playIdx >= playQueue.length-1){ cancelAnt(); return; }
+  if(!autoNext || playIdx >= playQueue.length - 1){ cancelAnt(); return; }
   triggerAutoNext();
 });
 
@@ -700,12 +694,12 @@ vid.addEventListener('error', () => {
 });
 
 function triggerAutoNext(){
-  if(playIdx >= playQueue.length-1){ cancelAnt(); return; }
+  if(playIdx >= playQueue.length - 1){ cancelAnt(); return; }
   showAntOverlay();
 }
 
 function showAntOverlay(){
-  const next = videos.find(x => x.id === playQueue[playIdx+1]);
+  const next = videos.find(x => x.id === playQueue[playIdx + 1]);
   if(!next) return;
   const o = document.getElementById('antOverlay');
   const p = document.getElementById('antProg');
@@ -714,7 +708,7 @@ function showAntOverlay(){
   p.style.transition = 'none'; p.style.width = '0';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     p.style.transition = 'width 5s linear';
-    p.style.width = '100%';
+    p.style.width      = '100%';
   }));
   antTimer = setTimeout(() => playNext(), 5100);
 }
@@ -722,11 +716,11 @@ function showAntOverlay(){
 function cancelAnt(){
   clearTimeout(antTimer); antTimer = null;
   const o = document.getElementById('antOverlay');
-  if(o){ o.classList.remove('show'); const p=document.getElementById('antProg'); if(p){p.style.transition='none';p.style.width='0';} }
+  if(o){ o.classList.remove('show'); const p = document.getElementById('antProg'); if(p){ p.style.transition='none'; p.style.width='0'; } }
 }
 
 function playNext(){
-  if(playIdx < playQueue.length-1){ playIdx++; playVideo(playQueue[playIdx], playQueue); }
+  if(playIdx < playQueue.length - 1){ playIdx++; playVideo(playQueue[playIdx], playQueue); }
 }
 function playPrev(){
   if(playIdx > 0){ playIdx--; playVideo(playQueue[playIdx], playQueue); }
@@ -734,7 +728,7 @@ function playPrev(){
 
 function updNavBtns(){
   document.getElementById('prevBtn').disabled = playIdx <= 0;
-  document.getElementById('nextBtn').disabled = playIdx >= playQueue.length-1;
+  document.getElementById('nextBtn').disabled = playIdx >= playQueue.length - 1;
 }
 
 function closePlayer(){
@@ -758,18 +752,28 @@ function handleSearch(q){
   const as = document.getElementById('all-section');
   const cc = document.getElementById('categoriesContainer');
   if(!q.trim()){ ss.classList.remove('visible'); as.style.display=''; cc.style.display=''; return; }
-  const r = videos.filter(v => v.name.toLowerCase().includes(q.toLowerCase()) || (v.category||'').toLowerCase().includes(q.toLowerCase()));
-  document.getElementById('searchTitle').textContent = `"${q.toUpperCase()}"`;
-  document.getElementById('searchCount').textContent = r.length;
-  document.getElementById('searchGrid').innerHTML = r.length
+  const r = videos.filter(v =>
+    v.name.toLowerCase().includes(q.toLowerCase()) ||
+    (v.category||'').toLowerCase().includes(q.toLowerCase())
+  );
+  document.getElementById('searchTitle').textContent  = `"${q.toUpperCase()}"`;
+  document.getElementById('searchCount').textContent  = r.length;
+  document.getElementById('searchGrid').innerHTML     = r.length
     ? r.map(v => cardHTML(v)).join('')
     : `<div class="empty-state"><div class="icon">🔍</div><h3>AUCUN RÉSULTAT</h3><p>Aucune vidéo ne correspond à "${q}"</p></div>`;
   ss.classList.add('visible'); as.style.display='none'; cc.style.display='none';
-  setTimeout(loadCardThumbs, 100);
+  setTimeout(() => {
+    document.querySelectorAll('#searchGrid .video-card').forEach(c => thumbObserver.observe(c));
+  }, 100);
 }
 
 // ── TOAST ──
-function showToast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function showToast(m){
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
 
 // ── ONLINE / OFFLINE ──
 window.addEventListener('offline', () => document.getElementById('offlineBadge').classList.add('show'));
@@ -778,92 +782,52 @@ if(!navigator.onLine) document.getElementById('offlineBadge').classList.add('sho
 
 // ── KEYBOARD ──
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') closePlayer();
-  if(e.key==='ArrowRight' && currentId) playNext();
-  if(e.key==='ArrowLeft' && currentId) playPrev();
-  if(e.key===' ' && currentId){ e.preventDefault(); vid.paused ? vid.play() : vid.pause(); }
+  if(e.key === 'Escape')                          closePlayer();
+  if(e.key === 'ArrowRight' && currentId !== null) playNext();
+  if(e.key === 'ArrowLeft'  && currentId !== null) playPrev();
+  if(e.key === ' ' && currentId !== null){ e.preventDefault(); vid.paused ? vid.play() : vid.pause(); }
 });
 
 document.getElementById('playerModal').addEventListener('click', e => {
   if(e.target === e.currentTarget) closePlayer();
 });
 
-// Observer pour charger les miniatures quand les cartes sont visibles
-const thumbObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if(entry.isIntersecting){
-      const card = entry.target;
-      const idMatch = card.querySelector('canvas[id^="canvas-"]');
-      if(idMatch){
-        const vid_id = parseInt(idMatch.id.replace('canvas-',''));
-        const v = videos.find(x => x.id === vid_id);
-        if(v && !isAudio(v)){
-        if(v && !isAudio(v) && !v.coverUrl){
-          generateThumb(v.url).then(img => {
-            if(!img) return;
-            const ctx = idMatch.getContext('2d');
-            const image = new Image();
-            image.onload = () => { ctx.drawImage(image,0,0,320,180); idMatch.style.opacity='1'; };
-            image.src = img;
-          });
-          thumbObserver.unobserve(card);
-        }
-      }
-    }
-  });
-}, {rootMargin:'100px'});
-
-// Miniatures chargées via IntersectionObserver dans render()
-
 // ── SERVICE WORKER (offline) ──
 if('serviceWorker' in navigator){
-  // Inline SW en blob pour éviter le besoin d'un fichier externe
   const swCode = `
-const CACHE = 'sharkflix-v1';
-const ASSETS = [location.href];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
-});
-self.addEventListener('fetch', e => {
-  if(e.request.method !== 'GET') return;
+const CACHE='sharkflix-v1';
+self.addEventListener('install',e=>{self.skipWaiting();});
+self.addEventListener('activate',e=>{self.clients.claim();});
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if(cached) return cached;
-      return fetch(e.request).then(resp => {
-        if(resp && resp.status===200 && resp.type==='basic'){
-          const clone = resp.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+    caches.match(e.request).then(cached=>{
+      if(cached)return cached;
+      return fetch(e.request).then(resp=>{
+        if(resp&&resp.status===200&&resp.type==='basic'){
+          const clone=resp.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,clone));
         }
         return resp;
-      }).catch(() => cached);
+      }).catch(()=>cached);
     })
   );
-});
-  `;
-  const blob = new Blob([swCode], {type:'application/javascript'});
+});`;
+  const blob  = new Blob([swCode], {type:'application/javascript'});
   const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl, {scope:'/'}).catch(()=>{
-    // Fallback: essai sans scope (certains navigateurs mobiles)
-    navigator.serviceWorker.register(swUrl).catch(()=>{});
-  });
+  navigator.serviceWorker.register(swUrl, {scope:'/'}).catch(() =>
+    navigator.serviceWorker.register(swUrl).catch(()=>{})
+  );
 }
 
-// Manifest PWA dynamique
+// ── PWA MANIFEST ──
 const manifest = {
-  name:'SHARKFLIX',
-  short_name:'SHARKFLIX',
-  start_url: location.href,
-  display:'standalone',
-  background_color:'#080810',
-  theme_color:'#080810',
+  name:'SHARKFLIX', short_name:'SHARKFLIX',
+  start_url: location.href, display:'standalone',
+  background_color:'#080810', theme_color:'#080810',
   icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23080810" rx="20"/><text y=".9em" font-size="80" x="10">🦈</text></svg>',sizes:'any',type:'image/svg+xml'}]
 };
-const mBlob = new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
+const mBlob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
 document.getElementById('manifestLink').href = URL.createObjectURL(mBlob);
 
 // ── INIT ──
