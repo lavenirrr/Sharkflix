@@ -76,6 +76,9 @@ main{padding:0 0 100px}
 .card-del-btn{position:absolute;top:8px;right:8px;opacity:0;transition:.2s;z-index:5;background:rgba(0,0,0,.75);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
 .video-card:hover .card-del-btn{opacity:1}
 @media(max-width:768px){.card-del-btn{opacity:1}}
+.thumb-wrap.is-audio{background:linear-gradient(135deg,#0d1a2e,#1a0820)}
+.badge-mp3{font-size:10px;color:#22d3ee;background:rgba(34,211,238,.1);border-radius:3px;padding:2px 6px;border:1px solid rgba(34,211,238,.2)}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* MODAL PLAYER */
 .modal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.95);align-items:center;justify-content:center;padding:16px}
@@ -197,7 +200,7 @@ main{padding:0 0 100px}
   </div>
 </div>
 
-<input type="file" id="fileInput" accept="video/*" multiple>
+<input type="file" id="fileInput" accept="video/*,audio/*" multiple>
 
 <!-- HERO -->
 <section id="hero">
@@ -350,6 +353,7 @@ async function loadFromDB(){
     name: row.name,
     category: row.category,
     size: row.size,
+    mediaType: row.mediaType || 'video',
     url: URL.createObjectURL(row.blob)
   }));
   if(videos.length) idCounter = Math.max(...videos.map(v=>v.id));
@@ -358,7 +362,7 @@ async function loadFromDB(){
 
 // ── FILE IMPORT ──
 document.getElementById('fileInput').addEventListener('change', function(e){
-  const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/'));
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
   if(!files.length){ showToast('❌ Aucun fichier vidéo sélectionné'); return; }
   catQueue = files;
   catQueueIdx = 0;
@@ -394,16 +398,18 @@ function setCatCustom(){
 document.getElementById('catCustomInput').addEventListener('keydown', e => { if(e.key==='Enter') setCatCustom(); });
 
 async function addVideo(file, category){
-  const blob = file; // File est déjà un Blob
+  const blob = file;
+  const mediaType = file.type.startsWith('audio/') ? 'audio' : 'video';
   const record = {
     name: cleanName(file.name),
     category,
     size: file.size,
+    mediaType,
     blob
   };
   const id = await dbAdd(record);
   const url = URL.createObjectURL(blob);
-  videos.unshift({ id, name: record.name, category, size: file.size, url });
+  videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url });
   idCounter = Math.max(idCounter, id);
 }
 
@@ -416,6 +422,8 @@ async function deleteVideo(id){
   render();
   showToast('🗑️ Vidéo supprimée');
 }
+
+function isAudio(v){ return v.mediaType === 'audio'; }
 
 function cleanName(n){
   return n.replace(/\.[^/.]+$/, '').replace(/[_\-\.]/g,' ').replace(/\s+/g,' ').trim();
@@ -485,9 +493,9 @@ function renderCats(){
 
 function cardHTML(v){
   return `<div class="video-card" onclick="playVideo(${v.id})">
-    <div class="thumb-wrap">
-      <span class="thumb-icon">▶</span>
-      <canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>
+    <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
+      <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
+      ${!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:''}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <button class="card-del-btn" onclick="event.stopPropagation();deleteVideo(${v.id})" title="Supprimer">🗑️</button>
@@ -495,6 +503,7 @@ function cardHTML(v){
       <div class="video-title">${v.name}</div>
       <div class="video-meta">
         <span class="video-cat">${v.category||'Autre'}</span>
+        ${isAudio(v)?'<span class="badge-mp3">MP3</span>':''}
         <span class="video-size">${fmtSize(v.size)}</span>
       </div>
     </div>
@@ -551,7 +560,35 @@ function playVideo(id, queue=null){
   vid.load();
   vid.play().catch(()=>{});
   document.getElementById('playerTitle').textContent = v.name;
-  document.getElementById('playerSub').textContent = v.category + ' · ' + fmtSize(v.size);
+  document.getElementById('playerSub').textContent = (isAudio(v)?'🎵 Audio':'🎬 Vidéo') + ' · ' + v.category + ' · ' + fmtSize(v.size);
+  // Mode audio : afficher cover art + cacher l'aspect ratio vidéo
+  const pw = document.querySelector('.player-wrap');
+  if(isAudio(v)){
+    pw.style.aspectRatio = 'unset';
+    pw.style.minHeight = '220px';
+    pw.style.background = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
+    vid.style.display = 'none';
+    let audioCover = document.getElementById('audioCover');
+    if(!audioCover){
+      audioCover = document.createElement('div');
+      audioCover.id = 'audioCover';
+      audioCover.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';
+      audioCover.innerHTML = `<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite" id="audioDisk">🎵</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
+      pw.appendChild(audioCover);
+    } else {
+      audioCover.style.display = 'flex';
+      audioCover.querySelector('#audioDisk').style.animationPlayState = 'running';
+      audioCover.querySelector('div:last-child').textContent = v.name;
+    }
+  } else {
+    pw.style.aspectRatio = '16/9';
+    pw.style.minHeight = '';
+    pw.style.background = '#000';
+    vid.style.display = 'block';
+    const audioCover = document.getElementById('audioCover');
+    if(audioCover) audioCover.style.display = 'none';
+  }
   updNavBtns();
   document.getElementById('playerModal').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -664,7 +701,7 @@ const thumbObserver = new IntersectionObserver(entries => {
       if(idMatch){
         const vid_id = parseInt(idMatch.id.replace('canvas-',''));
         const v = videos.find(x => x.id === vid_id);
-        if(v){
+        if(v && !isAudio(v)){
           generateThumb(v.url).then(img => {
             if(!img) return;
             const ctx = idMatch.getContext('2d');
