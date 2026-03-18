@@ -201,6 +201,7 @@ main{padding:0 0 100px}
 </div>
 
 <input type="file" id="fileInput" accept="video/*,audio/*" multiple>
+<input type="file" id="coverInput" accept="image/*" style="display:none">
 
 <!-- HERO -->
 <section id="hero">
@@ -236,7 +237,7 @@ main{padding:0 0 100px}
   <div class="modal-box">
     <button class="modal-close" onclick="closePlayer()">✕</button>
     <div class="player-wrap">
-      <video id="mainVideo" playsinline webkit-playsinline preload="metadata"></video>
+      <video id="mainVideo" controls playsinline webkit-playsinline preload="metadata" style="width:100%;height:100%;display:block;background:#000"></video>
       <div class="autonext-overlay" id="antOverlay">
         <div class="autonext-bar"><div class="autonext-prog" id="antProg"></div></div>
         <div class="autonext-info">
@@ -259,6 +260,25 @@ main{padding:0 0 100px}
     <div class="modal-info">
       <div class="modal-title" id="playerTitle"></div>
       <div class="modal-sub" id="playerSub"></div>
+    </div>
+  </div>
+</div>
+
+<!-- COVER IMAGE MODAL -->
+<div class="cat-modal" id="coverModal">
+  <div class="cat-box">
+    <h2>IMAGE DE COUVERTURE</h2>
+    <p id="coverModalSub">Choisis une image pour cette vidéo (optionnel)</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <button class="cat-btn" style="text-align:center;padding:16px" onclick="pickCoverImage()">🖼️ Choisir une image depuis la galerie</button>
+      <button class="cat-btn" style="text-align:center;padding:16px;color:var(--muted)" onclick="skipCover()">⏭ Passer (sans image)</button>
+    </div>
+    <div id="coverPreviewWrap" style="display:none;text-align:center">
+      <img id="coverPreview" style="max-width:100%;max-height:160px;border-radius:8px;object-fit:cover;margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="cat-btn" style="flex:1;text-align:center" onclick="pickCoverImage()">Changer</button>
+        <button class="btn-confirm" style="flex:1" onclick="confirmCover()">✓ Utiliser cette image</button>
+      </div>
     </div>
   </div>
 </div>
@@ -354,7 +374,8 @@ async function loadFromDB(){
     category: row.category,
     size: row.size,
     mediaType: row.mediaType || 'video',
-    url: URL.createObjectURL(row.blob)
+    url: URL.createObjectURL(row.blob),
+    coverUrl: row.coverBlob ? URL.createObjectURL(row.coverBlob) : null
   }));
   if(videos.length) idCounter = Math.max(...videos.map(v=>v.id));
   render();
@@ -370,11 +391,14 @@ document.getElementById('fileInput').addEventListener('change', function(e){
   this.value = '';
 });
 
+let pendingCat = null;   // catégorie choisie en attente de la cover
+let pendingCover = null; // blob cover en attente
+
 function nextCatPick(){
   if(catQueueIdx >= catQueue.length){
     render();
-    showToast(`✅ ${catQueue.length} vidéo${catQueue.length>1?'s':''} sauvegardée${catQueue.length>1?'s':''} !`);
-    catQueue=[];
+    showToast(`✅ ${catQueue.length} fichier${catQueue.length>1?'s':''} sauvegardé${catQueue.length>1?'s':''} !`);
+    catQueue=[]; pendingCat=null; pendingCover=null;
     return;
   }
   const f = catQueue[catQueueIdx];
@@ -384,10 +408,10 @@ function nextCatPick(){
 }
 
 function setCat(cat){
-  const f = catQueue[catQueueIdx];
-  catQueueIdx++;
+  pendingCat = cat;
   document.getElementById('catModal').classList.remove('open');
-  addVideo(f, cat).then(() => setTimeout(nextCatPick, 80));
+  // Passer à l'étape cover
+  setTimeout(() => openCoverModal(), 80);
 }
 
 function setCatCustom(){
@@ -397,19 +421,65 @@ function setCatCustom(){
 
 document.getElementById('catCustomInput').addEventListener('keydown', e => { if(e.key==='Enter') setCatCustom(); });
 
-async function addVideo(file, category){
+// ── COVER FLOW ──
+function openCoverModal(){
+  const f = catQueue[catQueueIdx];
+  pendingCover = null;
+  document.getElementById('coverModalSub').textContent = `"${cleanName(f.name)}"`;
+  document.getElementById('coverPreviewWrap').style.display = 'none';
+  document.getElementById('coverModal').classList.add('open');
+}
+
+function pickCoverImage(){
+  document.getElementById('coverInput').click();
+}
+
+document.getElementById('coverInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  pendingCover = file;
+  const url = URL.createObjectURL(file);
+  const img = document.getElementById('coverPreview');
+  img.src = url;
+  document.getElementById('coverPreviewWrap').style.display = 'block';
+  this.value = '';
+});
+
+function confirmCover(){
+  document.getElementById('coverModal').classList.remove('open');
+  proceedAdd();
+}
+
+function skipCover(){
+  pendingCover = null;
+  document.getElementById('coverModal').classList.remove('open');
+  proceedAdd();
+}
+
+function proceedAdd(){
+  const f = catQueue[catQueueIdx];
+  catQueueIdx++;
+  addVideo(f, pendingCat, pendingCover).then(() => setTimeout(nextCatPick, 80));
+}
+
+async function addVideo(file, category, coverFile=null){
   const blob = file;
   const mediaType = file.type.startsWith('audio/') ? 'audio' : 'video';
+  // Lire le cover comme ArrayBuffer pour le stocker en IndexedDB
+  let coverBlob = null;
+  if(coverFile) coverBlob = coverFile;
   const record = {
     name: cleanName(file.name),
     category,
     size: file.size,
     mediaType,
-    blob
+    blob,
+    coverBlob
   };
   const id = await dbAdd(record);
   const url = URL.createObjectURL(blob);
-  videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url });
+  const coverUrl = coverBlob ? URL.createObjectURL(coverBlob) : null;
+  videos.unshift({ id, name: record.name, category, size: file.size, mediaType, url, coverUrl });
   idCounter = Math.max(idCounter, id);
 }
 
@@ -417,6 +487,7 @@ async function deleteVideo(id){
   await dbDelete(id);
   const v = videos.find(x=>x.id===id);
   if(v && v.url) URL.revokeObjectURL(v.url);
+  if(v && v.coverUrl) URL.revokeObjectURL(v.coverUrl);
   videos = videos.filter(x=>x.id!==id);
   if(currentId===id) closePlayer();
   render();
@@ -458,10 +529,13 @@ function renderHero(){
   }
   const v = videos[0];
   h.style.backgroundImage = '';
-  // Essayer de générer une miniature via canvas
-  generateThumb(v.url).then(img => {
-    if(img) h.style.backgroundImage = `url(${img})`;
-  });
+  if(v.coverUrl){
+    h.style.backgroundImage = `url(${v.coverUrl})`;
+  } else if(!isAudio(v)){
+    generateThumb(v.url).then(img => {
+      if(img) h.style.backgroundImage = `url(${img})`;
+    });
+  }
   hc.innerHTML = `
     <div class="hero-badge">★ À la une</div>
     <div class="hero-title">${v.name}</div>
@@ -495,7 +569,9 @@ function cardHTML(v){
   return `<div class="video-card" onclick="playVideo(${v.id})">
     <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
       <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
-      ${!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:''}
+      ${v.coverUrl
+        ? `<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" alt="">`
+        : !isAudio(v) ? `<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>` : ''}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <button class="card-del-btn" onclick="event.stopPropagation();deleteVideo(${v.id})" title="Supprimer">🗑️</button>
@@ -569,17 +645,18 @@ function playVideo(id, queue=null){
     pw.style.background = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
     vid.style.display = 'none';
     let audioCover = document.getElementById('audioCover');
+    const diskHtml = v.coverUrl
+      ? `<img src="${v.coverUrl}" id="audioDisk" style="width:120px;height:120px;border-radius:12px;object-fit:cover;box-shadow:0 8px 32px rgba(0,0,0,.6)">`
+      : `<div id="audioDisk" style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite">🎵</div>`;
     if(!audioCover){
       audioCover = document.createElement('div');
       audioCover.id = 'audioCover';
       audioCover.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';
-      audioCover.innerHTML = `<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite" id="audioDisk">🎵</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
+      audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
       pw.appendChild(audioCover);
     } else {
       audioCover.style.display = 'flex';
-      audioCover.querySelector('#audioDisk').style.animationPlayState = 'running';
-      audioCover.querySelector('div:last-child').textContent = v.name;
+      audioCover.innerHTML = diskHtml + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
     }
   } else {
     pw.style.aspectRatio = '16/9';
@@ -701,7 +778,7 @@ const thumbObserver = new IntersectionObserver(entries => {
       if(idMatch){
         const vid_id = parseInt(idMatch.id.replace('canvas-',''));
         const v = videos.find(x => x.id === vid_id);
-        if(v && !isAudio(v)){
+        if(v && !isAudio(v) && !v.coverUrl){
           generateThumb(v.url).then(img => {
             if(!img) return;
             const ctx = idMatch.getContext('2d');
