@@ -281,6 +281,10 @@ main{padding:0 0 100px}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="searchInput" placeholder="Rechercher..." oninput="handleSearch(this.value)">
     </div>
+    <button class="btn-ghost" onclick="showPage('series')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+      <span>Séries</span>
+    </button>
     <button class="btn-ghost" onclick="showPage('playlists')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       <span>Playlists</span>
@@ -299,6 +303,10 @@ main{padding:0 0 100px}
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" placeholder="Rechercher..." oninput="handleSearch(this.value);document.getElementById('searchInput').value=this.value" style="background:none;border:none;outline:none;color:var(--text);font-size:14px;width:100%;font-family:'DM Sans',sans-serif">
   </div>
+  <button class="mob-btn" onclick="showPage('series');document.getElementById('mobMenu').classList.remove('open')">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+    Mes Séries
+  </button>
   <button class="mob-btn" onclick="showPage('playlists');document.getElementById('mobMenu').classList.remove('open')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
     Mes Playlists
@@ -314,6 +322,7 @@ main{padding:0 0 100px}
 <input type="file" id="coverInput" accept="image/*" style="display:none">
 <input type="file" id="plCoverInput" accept="image/*" style="display:none">
 <input type="file" id="editCoverInput" accept="image/*" style="display:none">
+<input type="file" id="seriesCoverInput" accept="image/*" style="display:none">
 <input type="file" id="wizSeriesCoverInput" accept="image/*" style="display:none">
 <input type="file" id="wizSeasonCoverInput" accept="image/*" style="display:none">
 
@@ -372,6 +381,23 @@ main{padding:0 0 100px}
 <!-- ████ PAGE PLAYLIST DETAIL ████ -->
 <div id="page-pl-detail" style="display:none">
   <div class="page-wrapper" id="plDetailContent"></div>
+</div>
+
+<!-- ████ PAGE SERIES ████ -->
+<div id="page-series" style="display:none">
+  <div class="page-wrapper">
+    <div class="page-top-bar">
+      <div class="page-top-bar-left">
+        <button class="back-btn" onclick="showPage('main')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Accueil</button>
+        <span class="page-title">MES SÉRIES</span>
+      </div>
+      <button class="btn-import" onclick="openCreateSeries()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Créer une série
+      </button>
+    </div>
+    <div class="pl-grid" id="seriesGrid"></div>
+  </div>
 </div>
 
 <!-- ████ PAGE SERIES DETAIL ████ -->
@@ -469,6 +495,26 @@ main{padding:0 0 100px}
     <div class="big-footer">
       <button class="btn-cancel" onclick="document.getElementById('createPlModal').classList.remove('open')">Annuler</button>
       <button class="btn-confirm" onclick="createPlaylist()">✓ Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE SERIES MODAL -->
+<div class="big-modal" id="createSeriesModal">
+  <div class="big-box">
+    <div class="big-hdr"><h2>CRÉER UNE SÉRIE</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createSeriesModal').classList.remove('open')">✕</button></div>
+    <div class="big-body">
+      <div class="field-lbl">Nom de la série</div>
+      <input type="text" class="field-in" id="seriesNameIn" placeholder="Ex : Breaking Bad...">
+      <div class="field-lbl">Image de couverture</div>
+      <div class="cover-row">
+        <div class="cover-prev" id="seriesCoverThumb">📺</div>
+        <button class="cover-pick-btn" onclick="document.getElementById('seriesCoverInput').click()">🖼️ Choisir une image</button>
+      </div>
+    </div>
+    <div class="big-footer">
+      <button class="btn-cancel" onclick="document.getElementById('createSeriesModal').classList.remove('open')">Annuler</button>
+      <button class="btn-confirm" onclick="createSeriesFromModal()">✓ Créer</button>
     </div>
   </div>
 </div>
@@ -648,7 +694,17 @@ document.getElementById('fileInput').addEventListener('change',function(e){
   const files=Array.from(e.target.files).filter(f=>f.type.startsWith('video/')||f.type.startsWith('audio/'));
   if(!files.length){showToast('❌ Aucun fichier vidéo');return}
   catQueue=files;catQueueIdx=0;
-  // Show type modal first (Film or Serie)
+
+  // Si import direct dans une série
+  if(window._importTargetSeriesId){
+    const sid = window._importTargetSeriesId;
+    window._importTargetSeriesId = null;
+    importFilesIntoSeries(sid, files);
+    this.value='';
+    return;
+  }
+
+  // Sinon afficher le modal de type
   const f=catQueue[0];
   document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
   document.getElementById('typeModal').classList.add('open');
@@ -928,7 +984,7 @@ async function deleteSeries(id){
   const s=seriesList.find(x=>x.id===id);
   if(s&&s.coverUrl)URL.revokeObjectURL(s.coverUrl);
   seriesList=seriesList.filter(x=>x.id!==id);
-  showToast('🗑️ Série supprimée');showPage('main');render();
+  showToast('🗑️ Série supprimée');showPage('series');render();renderSeriesList();
 }
 
 // ══ PLAYLISTS ══
@@ -1065,12 +1121,13 @@ async function saveEdit(){
 // ══ NAVIGATION ══
 function showPage(page,data){
   currentPage=page;
-  ['page-main','page-playlists','page-pl-detail','page-series-detail'].forEach(id=>{
+  ['page-main','page-playlists','page-pl-detail','page-series-detail','page-series'].forEach(id=>{
     document.getElementById(id).style.display='none';
   });
   document.getElementById('page-'+({main:'main',playlists:'playlists','pl-detail':'pl-detail','series-detail':'series-detail'}[page]||'main')).style.display='';
   document.getElementById('mobMenu').classList.remove('open');
   if(page==='playlists')renderPlaylists();
+  if(page==='series')renderSeriesList();
   if(page==='pl-detail'&&data!=null){currentPlId=data;renderPlDetail(data)}
   if(page==='series-detail'&&data!=null){currentSeriesId=data;renderSeriesDetail(data)}
   scrollTo(0,0);
@@ -1202,13 +1259,16 @@ function renderSeriesDetail(sid){
   const serVids=videos.filter(v=>v.seriesId===sid);
   const seasonNums=[...new Set(serVids.map(v=>v.seasonNum))].filter(Boolean).sort((a,b)=>a-b);
   document.getElementById('serDetailContent').innerHTML=`
-    <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('main')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Retour</button></div>
+    <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('series')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Séries</button></div>
       <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deleteSeries(${sid})">🗑️ Supprimer la série</button></div>
     <div class="detail-hero">
       <div class="detail-cover">${ser.coverUrl?`<img src="${ser.coverUrl}">`:'📺'}</div>
       <div class="detail-info"><div class="detail-name">${ser.name}</div>
         <div class="detail-meta">${seasonNums.length} saison${seasonNums.length!==1?'s':''} · ${serVids.length} épisode${serVids.length!==1?'s':''}</div>
-        ${serVids.length?`<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire depuis le début</button>`:''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          ${serVids.length?`<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire</button>`:''}
+          <button class="btn-import" onclick="importEpisodesIntoSeries(${sid})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Ajouter des épisodes</button>
+        </div>
       </div>
     </div>
     <div class="seasons-container">${seasonNums.map(num=>seasonAccHTML(ser,num,serVids)).join('')}</div>`;
@@ -1355,6 +1415,89 @@ function playPrev(){if(playIdx>0){playIdx--;playVideo(playQueue[playIdx],playQue
 function updNavBtns(){document.getElementById('prevBtn').disabled=playIdx<=0;document.getElementById('nextBtn').disabled=playIdx>=playQueue.length-1}
 function closePlayer(){cancelAnt();vid.pause();vid.src='';document.getElementById('playerModal').classList.remove('open');document.body.style.overflow='';currentId=null}
 function toggleAutoNext(){autoNext=!autoNext;document.getElementById('antToggle').classList.toggle('on',autoNext);if(!autoNext)cancelAnt();showToast(autoNext?'🔁 Lecture auto activée':'⏹ Lecture auto désactivée')}
+
+// ══ SERIES (nouveau système) ══
+let seriesCoverFile = null;
+
+function openCreateSeries(){
+  seriesCoverFile = null;
+  document.getElementById('seriesNameIn').value = '';
+  document.getElementById('seriesCoverThumb').innerHTML = '📺';
+  document.getElementById('createSeriesModal').classList.add('open');
+}
+
+document.getElementById('seriesCoverInput').addEventListener('change', function(e){
+  const f = e.target.files[0]; if(!f) return;
+  seriesCoverFile = f;
+  const thumb = document.getElementById('seriesCoverThumb');
+  thumb.querySelectorAll('img').forEach(x=>x.remove());
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(f);
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  thumb.appendChild(img);
+  this.value = '';
+});
+
+async function importFilesIntoSeries(seriesId, files){
+  const ser = seriesList.find(s=>s.id===seriesId);
+  if(!ser){ showToast('❌ Série introuvable'); return; }
+  const existingEps = videos.filter(v=>v.seriesId===seriesId);
+  let startEp = existingEps.length + 1;
+  for(let i=0; i<files.length; i++){
+    const file = files[i];
+    const title = cleanName(file.name);
+    const epNum = startEp + i;
+    const rec = {name:title, category:'Séries', size:file.size, mediaType:'video', blob:file, coverBlob:null, seriesId, seasonNum:1, episodeNum:epNum};
+    const id = await dbAdd(rec);
+    videos.unshift({id, name:title, category:'Séries', size:file.size, mediaType:'video', url:URL.createObjectURL(file), coverUrl:null, seriesId, seasonNum:1, episodeNum:epNum});
+  }
+  const n = files.length;
+  showToast(`✅ ${n} épisode${n>1?'s':''} ajouté${n>1?'s':''} !`);
+  render();
+  renderSeriesDetail(seriesId);
+}
+
+async function createSeriesFromModal(){
+  const name = document.getElementById('seriesNameIn').value.trim();
+  if(!name){ showToast('❌ Donne un nom à la série'); return; }
+  const coverFile = seriesCoverFile;
+  const id = await dbAddSeries({name, coverBlob: coverFile||null, seasons:[]});
+  const coverUrl = coverFile ? URL.createObjectURL(coverFile) : null;
+  seriesList.unshift({id, name, coverUrl, seasons:[]});
+  document.getElementById('createSeriesModal').classList.remove('open');
+  showToast('✅ Série créée !');
+  renderSeriesList();
+}
+
+function renderSeriesList(){
+  const grid = document.getElementById('seriesGrid');
+  if(!seriesList.length){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📺</div><h3>AUCUNE SÉRIE</h3><p>Crée ta première série avec le bouton ci-dessus</p></div>`;
+    return;
+  }
+  grid.innerHTML = seriesList.map(s => {
+    const epCount = videos.filter(v=>v.seriesId===s.id).length;
+    return `<div class="pl-card" onclick="showPage('series-detail',${s.id})">
+      <div class="pl-cover">${s.coverUrl?`<img src="${s.coverUrl}">`:'📺'}
+        <div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playSeriesAll(${s.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+      </div>
+      <div class="pl-info">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pl-name" style="flex:1">${s.name}</div>
+          <button style="flex-shrink:0;background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;padding:0" onclick="event.stopPropagation();openCtxMenu(event,${s.id},'series')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+        </div>
+        <div class="pl-count">${epCount} épisode${epCount!==1?'s':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Import épisodes dans une série depuis la page détail
+function importEpisodesIntoSeries(seriesId){
+  // Stocker l'id de la série cible et déclencher le file picker
+  window._importTargetSeriesId = seriesId;
+  document.getElementById('fileInput').click();
+}
 
 // ══ SEARCH ══
 function handleSearch(q){
