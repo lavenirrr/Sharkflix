@@ -12,7 +12,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Vos styles existants - je les garde identiques */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#080810;--bg2:#0f0f1c;--bg3:#16162a;--red:#e63946;--red2:#c1121f;--blue:#2563eb;--text:#f0ede8;--muted:#8a8799;--border:rgba(230,57,70,0.2);--card-radius:10px;--nav-h:64px}
 html{scroll-behavior:smooth}
@@ -60,12 +59,14 @@ main{padding:0 0 100px}
 .section-count{font-size:12px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 8px}
 /* GRIDS */
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:0 24px}
+
 /* CARD */
 .video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative;display:flex;flex-direction:column}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .card-action-bar{border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;padding:4px 8px;background:var(--bg3)}
 .card-menu-btn-ext{background:none;border:none;padding:5px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Sans',sans-serif;transition:.15s;border-radius:6px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .card-menu-btn-ext:hover{color:var(--red);background:rgba(230,57,70,.1)}
+
 .thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
@@ -80,6 +81,7 @@ main{padding:0 0 100px}
 .video-size{font-size:11px;color:var(--muted);margin-left:auto}
 .thumb-wrap.is-audio{background:linear-gradient(135deg,#0d1a2e,#1a0820)}
 .badge-mp3{font-size:10px;color:#22d3ee;background:rgba(34,211,238,.1);border-radius:3px;padding:2px 6px;border:1px solid rgba(34,211,238,.2)}
+
 /* CONTEXT MENU */
 .ctx-menu{position:fixed;background:var(--bg2);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:4px;z-index:600;min-width:190px;box-shadow:0 8px 32px rgba(0,0,0,.7);display:none}
 .ctx-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);background:none;border:none;width:100%;font-family:'DM Sans',sans-serif;transition:.12s;text-align:left}
@@ -609,1077 +611,602 @@ main{padding:0 0 100px}
 
 <script>
 // ══ STATE ══
-let videos = [], seriesList = [], playlists = [], featuredIds = [];
-let heroIdx = 0, heroTimer = null;
-let playQueue = [], playIdx = 0, autoNext = true, antTimer = null, currentId = null;
-let currentPage = 'main', currentPlId = null, currentSeriesId = null;
+let videos=[],seriesList=[],playlists=[],featuredIds=[];
+let heroIdx=0,heroTimer=null;
+let playQueue=[],playIdx=0,autoNext=true,antTimer=null,currentId=null;
+let currentPage='main',currentPlId=null,currentSeriesId=null;
 
-// NOUVELLE GESTION D'IMPORT
-let importQueue = [];
-let importCurrentIndex = 0;
-let isImporting = false;
-let pendingCat = null;
-let pendingCover = null;
+let catQueue=[],catQueueIdx=0,pendingCat=null,pendingCover=null;
 
-let wizStep = 1, wizSeriesId = null, wizSeasonNum = null;
-let wizNewSeriesCoverFile = null, wizNewSeasonCoverFile = null, wizIncludeAll = false;
-let wizEpTitles = [];
+let wizStep=1,wizSeriesId=null,wizSeasonNum=null;
+let wizNewSeriesCoverFile=null,wizNewSeasonCoverFile=null,wizIncludeAll=false;
+let wizEpTitles=[];
 
-let selectedVidIds = new Set(), plCoverFile = null;
-let ctxTargetId = null, ctxTargetType = 'video', editCoverFile = null;
+let selectedVidIds=new Set(),plCoverFile=null;
+let ctxTargetId=null,ctxTargetType='video',editCoverFile=null;
 
 // ══ DB ══
 let db;
-function initDB() {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open('sharkflix', 4);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('videos')) d.createObjectStore('videos', { keyPath: 'id', autoIncrement: true });
-      if (!d.objectStoreNames.contains('series')) d.createObjectStore('series', { keyPath: 'id', autoIncrement: true });
-      if (!d.objectStoreNames.contains('playlists')) d.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
+function initDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('sharkflix',4);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('series')) d.createObjectStore('series',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('playlists')) d.createObjectStore('playlists',{keyPath:'id',autoIncrement:true});
     };
-    req.onsuccess = e => { db = e.target.result; res(); };
-    req.onerror = () => rej(req.error);
+    req.onsuccess=e=>{db=e.target.result;res()};
+    req.onerror=()=>rej(req.error);
+    req.onblocked=()=>rej(new Error('DB blocked'));
   });
 }
-
-const dbOp = (store, mode, op) => new Promise((res, rej) => {
-  const tx = db.transaction(store, mode);
-  const s = tx.objectStore(store);
-  const r = op(s);
-  r.onsuccess = () => res(r.result);
-  r.onerror = () => rej(r.error);
-});
-
-const dbAdd = (rec) => dbOp('videos', 'readwrite', s => s.add(rec));
-const dbGetAll = () => dbOp('videos', 'readonly', s => s.getAll());
-const dbDel = (id) => dbOp('videos', 'readwrite', s => s.delete(id));
-
-function dbPutVideo(id, updates) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction('videos', 'readwrite');
-    const s = tx.objectStore('videos');
-    const r = s.get(id);
-    r.onsuccess = () => {
-      const rec = r.result;
-      Object.assign(rec, updates);
-      const p = s.put(rec);
-      p.onsuccess = () => res();
-      p.onerror = () => rej(p.error);
-    };
-    r.onerror = () => rej(r.error);
+const dbOp=(store,mode,op)=>new Promise((res,rej)=>{const tx=db.transaction(store,mode),s=tx.objectStore(store),r=op(s);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+const dbAdd=(rec)=>dbOp('videos','readwrite',s=>s.add(rec));
+const dbGetAll=()=>dbOp('videos','readonly',s=>s.getAll());
+const dbDel=(id)=>dbOp('videos','readwrite',s=>s.delete(id));
+const dbGet=(id)=>dbOp('videos','readonly',s=>s.get(id));
+function dbPutVideo(id,updates){
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('videos','readwrite'),s=tx.objectStore('videos'),r=s.get(id);
+    r.onsuccess=()=>{const rec=r.result;Object.assign(rec,updates);const p=s.put(rec);p.onsuccess=()=>res();p.onerror=()=>rej(p.error)};
+    r.onerror=()=>rej(r.error);
   });
 }
-
-const dbAddSeries = (rec) => dbOp('series', 'readwrite', s => s.add(rec));
-const dbGetAllSeries = () => dbOp('series', 'readonly', s => s.getAll());
-const dbDelSeries = (id) => dbOp('series', 'readwrite', s => s.delete(id));
-
-function dbPutSeries(id, updates) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction('series', 'readwrite');
-    const s = tx.objectStore('series');
-    const r = s.get(id);
-    r.onsuccess = () => {
-      const rec = r.result;
-      Object.assign(rec, updates);
-      const p = s.put(rec);
-      p.onsuccess = () => res();
-      p.onerror = () => rej(p.error);
-    };
-    r.onerror = () => rej(r.error);
+const dbAddSeries=(rec)=>dbOp('series','readwrite',s=>s.add(rec));
+const dbGetAllSeries=()=>dbOp('series','readonly',s=>s.getAll());
+const dbDelSeries=(id)=>dbOp('series','readwrite',s=>s.delete(id));
+function dbPutSeries(id,updates){
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('series','readwrite'),s=tx.objectStore('series'),r=s.get(id);
+    r.onsuccess=()=>{const rec=r.result;Object.assign(rec,updates);const p=s.put(rec);p.onsuccess=()=>res();p.onerror=()=>rej(p.error)};
+    r.onerror=()=>rej(r.error);
   });
 }
-
-const dbAddPl = (rec) => dbOp('playlists', 'readwrite', s => s.add(rec));
-const dbGetAllPl = () => dbOp('playlists', 'readonly', s => s.getAll());
-const dbDelPl = (id) => dbOp('playlists', 'readwrite', s => s.delete(id));
-
-function dbPutPlaylist(id, updates) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction('playlists', 'readwrite');
-    const s = tx.objectStore('playlists');
-    const r = s.get(id);
-    r.onsuccess = () => {
-      const rec = r.result;
-      Object.assign(rec, updates);
-      const p = s.put(rec);
-      p.onsuccess = () => res();
-      p.onerror = () => rej(p.error);
-    };
-    r.onerror = () => rej(r.error);
-  });
-}
+const dbAddPl=(rec)=>dbOp('playlists','readwrite',s=>s.add(rec));
+const dbGetAllPl=()=>dbOp('playlists','readonly',s=>s.getAll());
+const dbDelPl=(id)=>dbOp('playlists','readwrite',s=>s.delete(id));
 
 // ══ LOAD ══
-async function loadFromDB() {
-  try {
-    const [rows, serRows, plRows] = await Promise.all([dbGetAll(), dbGetAllSeries(), dbGetAllPl()]);
-    
-    videos = rows.reverse().map(r => ({
-      id: r.id,
-      name: r.name,
-      category: r.category,
-      size: r.size,
-      mediaType: r.mediaType || 'video',
-      url: r.blob ? URL.createObjectURL(r.blob) : null,
-      coverUrl: r.coverBlob ? URL.createObjectURL(r.coverBlob) : null,
-      seriesId: r.seriesId || null,
-      seasonNum: r.seasonNum || null,
-      episodeNum: r.episodeNum || null
-    }));
-    
-    seriesList = serRows.reverse().map(r => ({
-      id: r.id,
-      name: r.name,
-      coverUrl: r.coverBlob ? URL.createObjectURL(r.coverBlob) : null,
-      seasons: (r.seasons || []).map(s => ({
-        num: s.num,
-        name: s.name,
-        coverUrl: s.coverBlob ? URL.createObjectURL(s.coverBlob) : null
-      }))
-    }));
-    
-    playlists = plRows.reverse().map(r => ({
-      id: r.id,
-      name: r.name,
-      videoIds: r.videoIds || [],
-      coverUrl: r.coverBlob ? URL.createObjectURL(r.coverBlob) : null,
-      createdAt: r.createdAt || 0,
-      subseries: (r.subseries || []).map(ss => ({
-        id: ss.id,
-        name: ss.name,
-        videoIds: ss.videoIds || [],
-        coverUrl: ss.coverBlob ? URL.createObjectURL(ss.coverBlob) : null
-      }))
-    }));
-    
-    loadFeatured();
-    render();
-  } catch (e) {
-    console.error('Erreur chargement:', e);
-    render();
-  }
+async function loadFromDB(){
+  const [rows,serRows,plRows]=await Promise.all([dbGetAll(),dbGetAllSeries(),dbGetAllPl()]);
+  videos=rows.reverse().map(r=>({
+    id:r.id,name:r.name,category:r.category,size:r.size,mediaType:r.mediaType||'video',
+    url:URL.createObjectURL(r.blob),coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,
+    seriesId:r.seriesId||null,seasonNum:r.seasonNum||null,episodeNum:r.episodeNum||null
+  }));
+  seriesList=serRows.reverse().map(r=>({
+    id:r.id,name:r.name,
+    coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,
+    seasons:(r.seasons||[]).map(s=>({num:s.num,name:s.name,coverUrl:s.coverBlob?URL.createObjectURL(s.coverBlob):null}))
+  }));
+  playlists=plRows.reverse().map(r=>({
+    id:r.id,name:r.name,videoIds:r.videoIds||[],
+    coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,createdAt:r.createdAt||0,
+    subseries:(r.subseries||[]).map(ss=>({
+      id:ss.id,name:ss.name,videoIds:ss.videoIds||[],
+      coverUrl:ss.coverBlob?URL.createObjectURL(ss.coverBlob):null
+    }))
+  }));
+  loadFeatured();
+  render();
 }
 
 // ══ FEATURED ══
-function loadFeatured() { try { featuredIds = JSON.parse(localStorage.getItem('sf_feat') || '[]'); } catch { featuredIds = []; } }
-function saveFeatured() { localStorage.setItem('sf_feat', JSON.stringify(featuredIds)); }
+function loadFeatured(){try{featuredIds=JSON.parse(localStorage.getItem('sf_feat')||'[]')}catch{featuredIds=[]}}
+function saveFeatured(){localStorage.setItem('sf_feat',JSON.stringify(featuredIds))}
 
-// ══ NOUVEAU SYSTÈME D'IMPORT ══
-document.getElementById('fileInput').addEventListener('change', function(e) {
-  const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
-  
-  if (!files.length) {
-    showToast('❌ Aucun fichier vidéo');
-    return;
-  }
-  
-  // Ajouter les fichiers à la file d'attente
-  importQueue = [...files];
-  importCurrentIndex = 0;
-  
-  // Commencer l'importation
-  processImportQueue();
-  
-  this.value = '';
+// ══ FILE IMPORT ══
+document.getElementById('fileInput').addEventListener('change',function(e){
+  const rawFiles=Array.from(e.target.files).filter(f=>f.type.startsWith('video/')||f.type.startsWith('audio/'));
+  if(!rawFiles.length){showToast('❌ Aucun fichier vidéo');return}
+  // On clone chaque File en Blob stable AVANT de vider l'input
+  // Sur certains navigateurs (Safari/mobile), this.value='' invalide les références File
+  catQueue=rawFiles.map(f=>({
+    blob: f.slice(0,f.size,f.type),
+    name: f.name,
+    size: f.size,
+    type: f.type
+  }));
+  catQueueIdx=0;
+  this.value='';
+  const f=catQueue[0];
+  document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
+  document.getElementById('typeModal').classList.add('open');
 });
 
-function processImportQueue() {
-  if (importCurrentIndex >= importQueue.length) {
-    // Fin de l'importation
-    const total = importQueue.length;
-    showToast(`✅ ${total} fichier${total > 1 ? 's' : ''} importé${total > 1 ? 's' : ''} !`);
-    importQueue = [];
-    importCurrentIndex = 0;
-    isImporting = false;
+function chooseType(type){
+  document.getElementById('typeModal').classList.remove('open');
+  if(type==='serie'){
+    pendingCat='Séries';
+    setTimeout(()=>openWiz(),80);
+  } else {
+    const f=catQueue[catQueueIdx];
+    document.getElementById('catModalSub').textContent=`"${cleanName(f.name)}"`;
+    document.getElementById('catCustomIn').value='';
+    setTimeout(()=>document.getElementById('catModal').classList.add('open'),80);
+  }
+}
+
+function nextCatPick(){
+  if(catQueueIdx>=catQueue.length){
+    const n=catQueue.length;
     render();
+    if(n>0) showToast(`✅ ${n} fichier${n>1?'s':''} sauvegardé${n>1?'s':''} !`);
+    catQueue=[];pendingCat=null;pendingCover=null;
     return;
   }
-  
-  isImporting = true;
-  const currentFile = importQueue[importCurrentIndex];
-  
-  if (!currentFile) {
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 100);
-    return;
-  }
-  
-  // Afficher le modal de type
-  document.getElementById('typeModalSub').textContent = `"${cleanName(currentFile.name)}" (${importCurrentIndex + 1}/${importQueue.length})`;
+  const f=catQueue[catQueueIdx];
+  document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
   document.getElementById('typeModal').classList.add('open');
 }
 
-function chooseType(type) {
-  document.getElementById('typeModal').classList.remove('open');
-  
-  if (importCurrentIndex >= importQueue.length) {
-    showToast('❌ Erreur: plus de fichier en attente');
-    processImportQueue();
-    return;
-  }
-  
-  const currentFile = importQueue[importCurrentIndex];
-  
-  if (!currentFile) {
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 100);
-    return;
-  }
-  
-  if (type === 'serie') {
-    pendingCat = 'Séries';
-    openWiz();
-  } else {
-    document.getElementById('catModalSub').textContent = `"${cleanName(currentFile.name)}"`;
-    document.getElementById('catCustomIn').value = '';
-    setTimeout(() => document.getElementById('catModal').classList.add('open'), 80);
-  }
-}
-
-function setCat(cat) {
-  pendingCat = cat;
+function setCat(cat){
+  pendingCat=cat;
   document.getElementById('catModal').classList.remove('open');
-  setTimeout(() => openCoverModal(), 80);
+  setTimeout(()=>openCoverModal(),80);
 }
+function setCatCustom(){setCat(document.getElementById('catCustomIn').value.trim()||'Autre')}
+document.getElementById('catCustomIn').addEventListener('keydown',e=>{if(e.key==='Enter')setCatCustom()});
 
-function setCatCustom() {
-  const customCat = document.getElementById('catCustomIn').value.trim();
-  setCat(customCat || 'Autre');
-}
-
-document.getElementById('catCustomIn').addEventListener('keydown', e => {
-  if (e.key === 'Enter') setCatCustom();
-});
-
-function openCoverModal() {
-  if (importCurrentIndex >= importQueue.length) {
-    showToast('❌ Erreur: plus de fichier en attente');
-    processImportQueue();
-    return;
-  }
-  
-  const currentFile = importQueue[importCurrentIndex];
-  
-  if (!currentFile) {
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 100);
-    return;
-  }
-  
-  pendingCover = null;
-  document.getElementById('coverModalSub').textContent = `"${cleanName(currentFile.name)}"`;
-  document.getElementById('coverPreviewWrap').style.display = 'none';
+function openCoverModal(){
+  const f=catQueue[catQueueIdx];pendingCover=null;
+  document.getElementById('coverModalSub').textContent=`"${cleanName(f.name)}"`;
+  document.getElementById('coverPreviewWrap').style.display='none';
   document.getElementById('coverModal').classList.add('open');
 }
-
-function pickCoverImg() {
-  document.getElementById('coverInput').click();
-}
-
-document.getElementById('coverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  
-  pendingCover = f;
-  
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    document.getElementById('coverPreview').src = event.target.result;
-    document.getElementById('coverPreviewWrap').style.display = 'block';
-  };
-  reader.readAsDataURL(f);
-  
-  this.value = '';
+function pickCoverImg(){document.getElementById('coverInput').click()}
+document.getElementById('coverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  pendingCover=f;
+  document.getElementById('coverPreview').src=URL.createObjectURL(f);
+  document.getElementById('coverPreviewWrap').style.display='block';
+  this.value='';
 });
-
-function confirmCover() {
-  document.getElementById('coverModal').classList.remove('open');
-  proceedAdd();
+function confirmCover(){document.getElementById('coverModal').classList.remove('open');proceedAdd()}
+function skipCover(){pendingCover=null;document.getElementById('coverModal').classList.remove('open');proceedAdd()}
+function proceedAdd(){
+  const f=catQueue[catQueueIdx];
+  const cover=pendingCover;
+  const cat=pendingCat;
+  catQueueIdx++;
+  pendingCover=null;
+  addVideo(f,cat,cover).then(()=>{render();setTimeout(nextCatPick,80)})
 }
-
-function skipCover() {
-  pendingCover = null;
-  document.getElementById('coverModal').classList.remove('open');
-  proceedAdd();
-}
-
-async function proceedAdd() {
-  if (importCurrentIndex >= importQueue.length) {
-    showToast('❌ Erreur: plus de fichier en attente');
-    processImportQueue();
-    return;
-  }
-  
-  const file = importQueue[importCurrentIndex];
-  
-  if (!file) {
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 100);
-    return;
-  }
-  
-  try {
-    await addVideo(file, pendingCat, pendingCover);
-    importCurrentIndex++;
-    // Passer au fichier suivant
-    setTimeout(() => processImportQueue(), 300);
-  } catch (error) {
-    console.error('Erreur ajout vidéo:', error);
-    showToast('❌ Erreur lors de l\'import');
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 300);
-  }
-}
-
-async function addVideo(file, category, coverFile) {
-  try {
-    const mediaType = file.type.startsWith('audio/') ? 'audio' : 'video';
-    
-    // Créer une copie du fichier
-    const fileCopy = file.slice(0, file.size, file.type);
-    
-    const record = {
-      name: cleanName(file.name),
-      category,
-      size: file.size,
-      mediaType,
-      blob: fileCopy,
-      coverBlob: coverFile || null,
-      seriesId: null,
-      seasonNum: null,
-      episodeNum: null
-    };
-    
-    const id = await dbAdd(record);
-    
-    const url = URL.createObjectURL(fileCopy);
-    const coverUrl = coverFile ? URL.createObjectURL(coverFile) : null;
-    
-    videos.unshift({
-      id,
-      name: record.name,
-      category,
-      size: file.size,
-      mediaType,
-      url,
-      coverUrl,
-      seriesId: null,
-      seasonNum: null,
-      episodeNum: null
-    });
-    
-    return id;
-  } catch (error) {
-    console.error('Erreur dans addVideo:', error);
-    throw error;
-  }
+async function addVideo(f,category,coverFile){
+  const mediaType=f.type.startsWith('audio/')?'audio':'video';
+  // f.blob est déjà un Blob stable cloné depuis le File original
+  const coverBlob=coverFile?coverFile.slice(0,coverFile.size,coverFile.type):null;
+  const record={name:cleanName(f.name),category,size:f.size,mediaType,blob:f.blob,coverBlob:coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
+  const id=await dbAdd(record);
+  videos.unshift({id,name:record.name,category,size:f.size,mediaType,url:URL.createObjectURL(f.blob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
 }
 
 // ═══ SERIES WIZARD ═══
-function openWiz() {
-  wizStep = 1;
-  wizSeriesId = null;
-  wizSeasonNum = null;
-  wizIncludeAll = false;
-  wizNewSeriesCoverFile = null;
-  wizNewSeasonCoverFile = null;
-  wizEpTitles = [];
-  
-  document.getElementById('wizSeriesNameIn').value = '';
-  document.getElementById('wizSeasonNumIn').value = '1';
-  document.getElementById('wizSeasonNameIn').value = '';
-  document.getElementById('wizSeriesCoverPrev').innerHTML = '🎬';
-  document.getElementById('wizSeasonCoverPrev').innerHTML = '📺';
-  
+function openWiz(){
+  wizStep=1;wizSeriesId=null;wizSeasonNum=null;wizIncludeAll=false;
+  wizNewSeriesCoverFile=null;wizNewSeasonCoverFile=null;wizEpTitles=[];
+  document.getElementById('wizSeriesNameIn').value='';
+  document.getElementById('wizSeasonNumIn').value='1';
+  document.getElementById('wizSeasonNameIn').value='';
+  document.getElementById('wizSeriesCoverPrev').innerHTML='🎬';
+  document.getElementById('wizSeasonCoverPrev').innerHTML='📺';
   renderWizStep(1);
   document.getElementById('wizModal').classList.add('open');
 }
-
-function closeWiz() {
+function closeWiz(){
   document.getElementById('wizModal').classList.remove('open');
-  
-  if (wizFromSeriesPage !== null) {
-    const sid = wizFromSeriesPage;
-    wizFromSeriesPage = null;
-    renderSeriesDetail(sid);
-    return;
+  if(wizFromSeriesPage!==null){
+    const sid=wizFromSeriesPage;wizFromSeriesPage=null;
+    renderSeriesDetail(sid);return;
   }
-  
-  // Si on était dans un import et qu'il y a des fichiers, passer au suivant
-  if (importQueue.length > 0 && importCurrentIndex < importQueue.length) {
-    importCurrentIndex++;
-    setTimeout(() => processImportQueue(), 300);
+  // Seulement si on était dans un vrai flux d'import
+  if(catQueue.length>0){
+    catQueueIdx++;
+    setTimeout(()=>nextCatPick(),80);
   }
 }
-
-function openWizForSeason(sid) {
-  wizStep = 1;
-  wizSeriesId = sid;
-  wizSeasonNum = null;
-  wizIncludeAll = false;
-  wizNewSeriesCoverFile = null;
-  wizNewSeasonCoverFile = null;
-  wizEpTitles = [];
-  
-  document.getElementById('wizSeasonNumIn').value = '1';
-  document.getElementById('wizSeasonNameIn').value = '';
-  document.getElementById('wizSeasonCoverPrev').innerHTML = '📺';
-  
-  wizFromSeriesPage = sid;
-  
+// Ouvre le wizard directement à l'étape 2 (saison) pour une série existante, sans fichier en attente
+function openWizForSeason(sid){
+  // Ne touche PAS à catQueue — on sauvegarde/restaure si besoin
+  const savedQueue=catQueue.slice();
+  const savedIdx=catQueueIdx;
+  wizStep=1;wizSeriesId=sid;wizSeasonNum=null;wizIncludeAll=false;
+  wizNewSeriesCoverFile=null;wizNewSeasonCoverFile=null;wizEpTitles=[];
+  document.getElementById('wizSeasonNumIn').value='1';
+  document.getElementById('wizSeasonNameIn').value='';
+  document.getElementById('wizSeasonCoverPrev').innerHTML='📺';
+  wizFromSeriesPage=sid;
+  // File queue vide pour ce mode
+  catQueue=[];catQueueIdx=0;
   renderWizStep(2);
   document.getElementById('wizModal').classList.add('open');
 }
-
-let wizFromSeriesPage = null;
-
-function renderWizStep(step) {
-  wizStep = step;
-  
-  [1, 2, 3].forEach(s => {
-    document.getElementById(`wizStep${s}`).style.display = s === step ? '' : 'none';
-    const t = document.getElementById(`wizTab${s}`);
-    t.classList.toggle('active', s === step);
-    t.classList.toggle('done', s < step);
+let wizFromSeriesPage=null;
+function renderWizStep(step){
+  wizStep=step;
+  [1,2,3].forEach(s=>{
+    document.getElementById(`wizStep${s}`).style.display=s===step?'':'none';
+    const t=document.getElementById(`wizTab${s}`);
+    t.classList.toggle('active',s===step);t.classList.toggle('done',s<step);
   });
-  
-  document.getElementById('wizBackBtn').style.display = step > 1 ? '' : 'none';
-  document.getElementById('wizNextBtn').textContent = step === 3 ? '✓ Importer' : 'Suivant →';
-  
-  const titles = ['CHOISIR UNE SÉRIE', 'CHOISIR UNE SAISON', 'ÉPISODES'];
-  document.getElementById('wizHdrTitle').textContent = titles[step - 1];
-  
-  if (step === 1) renderWizSeriesItems();
-  if (step === 2) renderWizSeasonItems();
-  if (step === 3) renderWizEpisodes();
+  document.getElementById('wizBackBtn').style.display=step>1?'':'none';
+  document.getElementById('wizNextBtn').textContent=step===3?'✓ Importer':'Suivant →';
+  const titles=['CHOISIR UNE SÉRIE','CHOISIR UNE SAISON','ÉPISODES'];
+  document.getElementById('wizHdrTitle').textContent=titles[step-1];
+  if(step===1) renderWizSeriesItems();
+  if(step===2) renderWizSeasonItems();
+  if(step===3) renderWizEpisodes();
 }
-
-function renderWizSeriesItems() {
-  const cont = document.getElementById('wizSeriesItems');
-  const activeSeries = seriesList;
-  
-  cont.innerHTML = activeSeries.map(s => `
-    <div class="wiz-item${wizSeriesId === s.id ? ' active' : ''}" onclick="wizPickSeries(${s.id})">
-      <div class="wiz-item-cover">${s.coverUrl ? `<img src="${s.coverUrl}">` : '🎬'}</div>
+function renderWizSeriesItems(){
+  const cont=document.getElementById('wizSeriesItems');
+  const activeSeries=seriesList;
+  cont.innerHTML=activeSeries.map(s=>`
+    <div class="wiz-item${wizSeriesId===s.id?' active':''}" onclick="wizPickSeries(${s.id})">
+      <div class="wiz-item-cover">${s.coverUrl?`<img src="${s.coverUrl}">`:'🎬'}</div>
       <span class="wiz-item-name">${s.name}</span>
-      ${wizSeriesId === s.id ? '<span class="wiz-item-check">✓</span>' : ''}
-    </div>`).join('') +
+      ${wizSeriesId===s.id?'<span class="wiz-item-check">✓</span>':''}
+    </div>`).join('')+
     `<button class="wiz-add-btn" onclick="showWizNewSeriesForm()">+ Nouvelle série</button>`;
-  
-  if (!activeSeries.length) showWizNewSeriesForm();
+  if(!activeSeries.length) showWizNewSeriesForm();
 }
-
-function wizPickSeries(id) {
-  wizSeriesId = id;
-  document.getElementById('wizNewSeriesForm').style.display = 'none';
+function wizPickSeries(id){
+  wizSeriesId=id;
+  document.getElementById('wizNewSeriesForm').style.display='none';
   renderWizSeriesItems();
 }
-
-function showWizNewSeriesForm() {
-  wizSeriesId = null;
-  document.getElementById('wizNewSeriesForm').style.display = '';
+function showWizNewSeriesForm(){
+  wizSeriesId=null;
+  document.getElementById('wizNewSeriesForm').style.display='';
   renderWizSeriesItems();
 }
-
-function renderWizSeasonItems() {
-  const ser = seriesList.find(s => s.id === wizSeriesId);
-  const cont = document.getElementById('wizSeasonItems');
-  const seasons = ser ? ser.seasons : [];
-  
-  cont.innerHTML = seasons.map(s => `
-    <div class="wiz-item${wizSeasonNum === s.num ? ' active' : ''}" onclick="wizPickSeason(${s.num})">
-      <div class="wiz-item-cover">${s.coverUrl ? `<img src="${s.coverUrl}">` : '📺'}</div>
-      <span class="wiz-item-name">${s.name || 'Saison ' + s.num}</span>
-      ${wizSeasonNum === s.num ? '<span class="wiz-item-check">✓</span>' : ''}
-    </div>`).join('') +
+function renderWizSeasonItems(){
+  const ser=seriesList.find(s=>s.id===wizSeriesId);
+  const cont=document.getElementById('wizSeasonItems');
+  const seasons=ser?ser.seasons:[];
+  cont.innerHTML=seasons.map(s=>`
+    <div class="wiz-item${wizSeasonNum===s.num?' active':''}" onclick="wizPickSeason(${s.num})">
+      <div class="wiz-item-cover">${s.coverUrl?`<img src="${s.coverUrl}">`:'📺'}</div>
+      <span class="wiz-item-name">${s.name||'Saison '+s.num}</span>
+      ${wizSeasonNum===s.num?'<span class="wiz-item-check">✓</span>':''}
+    </div>`).join('')+
     `<button class="wiz-add-btn" onclick="showWizNewSeasonForm()">+ Nouvelle saison</button>`;
-  
-  if (!seasons.length) showWizNewSeasonForm();
+  if(!seasons.length) showWizNewSeasonForm();
 }
-
-function wizPickSeason(num) {
-  wizSeasonNum = num;
-  document.getElementById('wizNewSeasonForm').style.display = 'none';
+function wizPickSeason(num){
+  wizSeasonNum=num;
+  document.getElementById('wizNewSeasonForm').style.display='none';
   renderWizSeasonItems();
 }
-
-function showWizNewSeasonForm() {
-  wizSeasonNum = null;
-  const ser = seriesList.find(s => s.id === wizSeriesId);
-  const maxSeason = ser && ser.seasons.length ? Math.max(...ser.seasons.map(s => s.num)) : 0;
-  document.getElementById('wizSeasonNumIn').value = maxSeason + 1;
-  document.getElementById('wizNewSeasonForm').style.display = '';
+function showWizNewSeasonForm(){
+  wizSeasonNum=null;
+  const ser=seriesList.find(s=>s.id===wizSeriesId);
+  const maxSeason=ser&&ser.seasons.length?Math.max(...ser.seasons.map(s=>s.num)):0;
+  document.getElementById('wizSeasonNumIn').value=maxSeason+1;
+  document.getElementById('wizNewSeasonForm').style.display='';
   renderWizSeasonItems();
 }
-
-function renderWizEpisodes() {
-  if (importCurrentIndex >= importQueue.length) {
-    showToast('❌ Erreur: plus de fichier en attente');
-    return;
-  }
-  
-  const remaining = importQueue.slice(importCurrentIndex + 1);
-  const batchWrap = document.getElementById('wizBatchWrap');
-  
-  if (remaining.length) {
-    batchWrap.innerHTML = `
+function renderWizEpisodes(){
+  const remaining=catQueue.slice(catQueueIdx+1);
+  const batchWrap=document.getElementById('wizBatchWrap');
+  if(remaining.length){
+    batchWrap.innerHTML=`
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
-        <input type="checkbox" id="wizIncludeAllChk" ${wizIncludeAll ? 'checked' : ''} onchange="wizToggleAll(this.checked)" style="width:16px;height:16px;accent-color:var(--red)">
-        <div><div style="font-weight:600;font-size:13px">Inclure les ${remaining.length} fichier${remaining.length > 1 ? 's' : ''} suivant${remaining.length > 1 ? 's' : ''}</div>
+        <input type="checkbox" id="wizIncludeAllChk" ${wizIncludeAll?'checked':''} onchange="wizToggleAll(this.checked)" style="width:16px;height:16px;accent-color:var(--red)">
+        <div><div style="font-weight:600;font-size:13px">Inclure les ${remaining.length} fichier${remaining.length>1?'s':''} suivant${remaining.length>1?'s':''}</div>
         <div style="font-size:12px;color:var(--muted)">dans la même série et saison</div></div>
       </label>`;
-  } else {
-    batchWrap.innerHTML = '';
-  }
-  
-  const ser = seriesList.find(s => s.id === wizSeriesId);
-  const serName = ser ? ser.name : (document.getElementById('wizSeriesNameIn').value.trim() || 'Nouvelle série');
-  const season = ser ? ser.seasons.find(s => s.num === wizSeasonNum) : null;
-  const snNum = wizSeasonNum || (parseInt(document.getElementById('wizSeasonNumIn').value) || 1);
-  const snName = season ? (season.name || 'Saison ' + season.num) : (document.getElementById('wizSeasonNameIn').value.trim() || 'Saison ' + snNum);
-  
-  document.getElementById('wizEpSummary').textContent = `${serName} · ${snName}`;
-  
-  const files = wizIncludeAll ? importQueue.slice(importCurrentIndex) : [importQueue[importCurrentIndex]];
-  const validFiles = files.filter(f => f && f.size > 0);
-  
-  if (validFiles.length === 0) {
-    showToast('❌ Aucun fichier valide');
-    return;
-  }
-  
-  const existingEps = videos.filter(v => v.seriesId === wizSeriesId && v.seasonNum === snNum);
-  const startEp = existingEps.length + 1;
-  
-  wizEpTitles = validFiles.map(f => cleanName(f.name));
-  
-  document.getElementById('wizEpList').innerHTML = `<div style="max-height:220px;overflow-y:auto;padding-right:4px">` +
-    validFiles.map((f, i) => `
+  } else {batchWrap.innerHTML='';}
+  const ser=seriesList.find(s=>s.id===wizSeriesId);
+  const serName=ser?ser.name:(document.getElementById('wizSeriesNameIn').value.trim()||'Nouvelle série');
+  const season=ser?ser.seasons.find(s=>s.num===wizSeasonNum):null;
+  const snNum=wizSeasonNum||(parseInt(document.getElementById('wizSeasonNumIn').value)||1);
+  const snName=season?(season.name||'Saison '+season.num):(document.getElementById('wizSeasonNameIn').value.trim()||'Saison '+snNum);
+  document.getElementById('wizEpSummary').textContent=`${serName} · ${snName}`;
+  const files=wizIncludeAll?catQueue.slice(catQueueIdx):[catQueue[catQueueIdx]];
+  const existingEps=videos.filter(v=>v.seriesId===wizSeriesId&&v.seasonNum===snNum);
+  const startEp=existingEps.length+1;
+  wizEpTitles=files.map(f=>cleanName(f.name));
+  document.getElementById('wizEpList').innerHTML=`<div style="max-height:220px;overflow-y:auto;padding-right:4px">`+
+    files.map((f,i)=>`
       <div class="ep-list-item">
-        <span class="ep-badge">E${String(startEp + i).padStart(2, '0')}</span>
+        <span class="ep-badge">E${String(startEp+i).padStart(2,'0')}</span>
         <input class="ep-name-in" value="${cleanName(f.name)}" oninput="wizEpTitles[${i}]=this.value">
-      </div>`).join('') + `</div>`;
+      </div>`).join('')+`</div>`;
 }
-
-function wizToggleAll(v) {
-  wizIncludeAll = v;
-  renderWizEpisodes();
-}
-
-function wizBack() {
-  renderWizStep(wizStep - 1);
-}
-
-async function wizNext() {
-  if (wizStep === 1) {
-    if (!wizSeriesId) {
-      const name = document.getElementById('wizSeriesNameIn').value.trim();
-      if (!name) { showToast('❌ Donne un nom à la série'); return; }
+function wizToggleAll(v){wizIncludeAll=v;renderWizEpisodes()}
+function wizBack(){renderWizStep(wizStep-1)}
+async function wizNext(){
+  if(wizStep===1){
+    if(!wizSeriesId){
+      const name=document.getElementById('wizSeriesNameIn').value.trim();
+      if(!name){showToast('❌ Donne un nom à la série');return}
     }
     renderWizStep(2);
-  } else if (wizStep === 2) {
-    if (!wizSeasonNum) {
-      const num = parseInt(document.getElementById('wizSeasonNumIn').value) || 1;
-      const ser = seriesList.find(s => s.id === wizSeriesId);
-      if (ser && ser.seasons.some(s => s.num === num)) {
-        showToast('❌ Cette saison existe déjà');
-        return;
-      }
+  } else if(wizStep===2){
+    if(!wizSeasonNum){
+      const num=parseInt(document.getElementById('wizSeasonNumIn').value)||1;
+      const ser=seriesList.find(s=>s.id===wizSeriesId);
+      if(ser&&ser.seasons.some(s=>s.num===num)){showToast('❌ Cette saison existe déjà');return}
     }
-    if (wizFromSeriesPage !== null && (!importQueue.length || importCurrentIndex >= importQueue.length)) {
-      await doWizCreateSeasonOnly();
-      return;
+    // Mode "ajouter une saison" sans fichiers : on crée juste la saison
+    if(wizFromSeriesPage!==null&&!catQueue.length){
+      await doWizCreateSeasonOnly();return;
     }
     renderWizStep(3);
   } else {
     await doWizImport();
   }
 }
-
-async function doWizCreateSeasonOnly() {
-  const sid = wizSeriesId || wizFromSeriesPage;
-  const snum = wizSeasonNum || (parseInt(document.getElementById('wizSeasonNumIn').value) || 1);
-  const sname = document.getElementById('wizSeasonNameIn').value.trim() || `Saison ${snum}`;
-  const coverFile = wizNewSeasonCoverFile;
-  
-  const ser = seriesList.find(s => s.id === sid);
-  if (ser) {
-    const coverUrl = coverFile ? URL.createObjectURL(coverFile) : null;
-    ser.seasons.push({ num: snum, name: sname, coverUrl });
-    ser.seasons.sort((a, b) => a.num - b.num);
+async function doWizCreateSeasonOnly(){
+  const sid=wizSeriesId||wizFromSeriesPage;
+  const snum=wizSeasonNum||(parseInt(document.getElementById('wizSeasonNumIn').value)||1);
+  const sname=document.getElementById('wizSeasonNameIn').value.trim()||`Saison ${snum}`;
+  const coverFile=wizNewSeasonCoverFile;
+  const coverUrl=coverFile?URL.createObjectURL(coverFile):null;
+  const ser=seriesList.find(s=>s.id===sid);
+  if(ser){
+    ser.seasons.push({num:snum,name:sname,coverUrl});
+    ser.seasons.sort((a,b)=>a.num-b.num);
   }
-  
-  await new Promise((res, rej) => {
-    const tx = db.transaction('series', 'readwrite');
-    const store = tx.objectStore('series');
-    const r = store.get(sid);
-    
-    r.onsuccess = () => {
-      const rec = r.result;
-      rec.seasons = rec.seasons || [];
-      rec.seasons.push({
-        num: snum,
-        name: sname,
-        coverBlob: coverFile || null
-      });
-      rec.seasons.sort((a, b) => a.num - b.num);
-      store.put(rec);
-      tx.oncomplete = res;
-      tx.onerror = rej;
-    };
+  await new Promise((res,rej)=>{
+    const tx=db.transaction('series','readwrite'),store=tx.objectStore('series'),r=store.get(sid);
+    r.onsuccess=()=>{const rec=r.result;rec.seasons=rec.seasons||[];rec.seasons.push({num:snum,name:sname,coverBlob:coverFile||null});rec.seasons.sort((a,b)=>a.num-b.num);store.put(rec);tx.oncomplete=res;tx.onerror=rej};
   });
-  
   document.getElementById('wizModal').classList.remove('open');
   showToast(`✅ ${sname} créée !`);
-  
-  const returnSid = wizFromSeriesPage;
-  wizFromSeriesPage = null;
+  const returnSid=wizFromSeriesPage;wizFromSeriesPage=null;
   render();
-  
-  if (returnSid) renderSeriesDetail(returnSid);
-  else renderSeriesDetail(sid);
+  renderSeriesDetail(returnSid||sid);
 }
-
-async function doWizImport() {
-  let sid = wizSeriesId;
-  
-  if (!sid) {
-    const name = document.getElementById('wizSeriesNameIn').value.trim();
-    const coverFile = wizNewSeriesCoverFile;
-    const id = await dbAddSeries({ name, coverBlob: coverFile || null, seasons: [] });
-    const coverUrl = coverFile ? URL.createObjectURL(coverFile) : null;
-    seriesList.unshift({ id, name, coverUrl, seasons: [] });
-    sid = id;
+async function doWizImport(){
+  let sid=wizSeriesId;
+  if(!sid){
+    const name=document.getElementById('wizSeriesNameIn').value.trim();
+    const coverFile=wizNewSeriesCoverFile;
+    const id=await dbAddSeries({name,coverBlob:coverFile||null,seasons:[]});
+    const coverUrl=coverFile?URL.createObjectURL(coverFile):null;
+    seriesList.unshift({id,name,coverUrl,seasons:[]});
+    sid=id;
   }
-  
-  let snum = wizSeasonNum;
-  if (!snum) {
-    snum = parseInt(document.getElementById('wizSeasonNumIn').value) || 1;
-    const sname = document.getElementById('wizSeasonNameIn').value.trim() || `Saison ${snum}`;
-    const coverFile = wizNewSeasonCoverFile;
-    
-    const ser = seriesList.find(s => s.id === sid);
-    const coverUrl = coverFile ? URL.createObjectURL(coverFile) : null;
-    ser.seasons.push({ num: snum, name: sname, coverUrl });
-    ser.seasons.sort((a, b) => a.num - b.num);
-    
-    await new Promise((res, rej) => {
-      const tx = db.transaction('series', 'readwrite');
-      const store = tx.objectStore('series');
-      const r = store.get(sid);
-      
-      r.onsuccess = () => {
-        const rec = r.result;
-        rec.seasons = rec.seasons || [];
-        rec.seasons.push({
-          num: snum,
-          name: sname,
-          coverBlob: coverFile || null
-        });
-        rec.seasons.sort((a, b) => a.num - b.num);
-        store.put(rec);
-        tx.oncomplete = res;
-        tx.onerror = rej;
-      };
+  let snum=wizSeasonNum;
+  if(!snum){
+    snum=parseInt(document.getElementById('wizSeasonNumIn').value)||1;
+    const sname=document.getElementById('wizSeasonNameIn').value.trim()||`Saison ${snum}`;
+    const coverFile=wizNewSeasonCoverFile;
+    const coverUrl=coverFile?URL.createObjectURL(coverFile):null;
+    const ser=seriesList.find(s=>s.id===sid);
+    ser.seasons.push({num:snum,name:sname,coverUrl});
+    ser.seasons.sort((a,b)=>a.num-b.num);
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('series','readwrite'),store=tx.objectStore('series'),r=store.get(sid);
+      r.onsuccess=()=>{const rec=r.result;rec.seasons=rec.seasons||[];rec.seasons.push({num:snum,name:sname,coverBlob:coverFile||null});rec.seasons.sort((a,b)=>a.num-b.num);store.put(rec);tx.oncomplete=res;tx.onerror=rej};
     });
   }
-  
-  if (importCurrentIndex >= importQueue.length) {
-    showToast('❌ Erreur: plus de fichier en attente');
-    document.getElementById('wizModal').classList.remove('open');
-    return;
+  const files=wizIncludeAll?catQueue.slice(catQueueIdx):[catQueue[catQueueIdx]];
+  const existingEps=videos.filter(v=>v.seriesId===sid&&v.seasonNum===snum);
+  const startEp=existingEps.length+1;
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    const title=wizEpTitles[i]||cleanName(file.name);
+    const epNum=startEp+i;
+    const rec={name:title,category:'Séries',size:file.size,mediaType:'video',blob:file.blob,coverBlob:null,seriesId:sid,seasonNum:snum,episodeNum:epNum};
+    const id=await dbAdd(rec);
+    videos.unshift({id,name:title,category:'Séries',size:file.size,mediaType:'video',url:URL.createObjectURL(file.blob),coverUrl:null,seriesId:sid,seasonNum:snum,episodeNum:epNum});
+    catQueueIdx++;
   }
-  
-  const files = wizIncludeAll ? importQueue.slice(importCurrentIndex) : [importQueue[importCurrentIndex]];
-  const validFiles = files.filter(f => f && f.size > 0);
-  
-  if (validFiles.length === 0) {
-    showToast('❌ Aucun fichier valide');
-    document.getElementById('wizModal').classList.remove('open');
-    return;
-  }
-  
-  const existingEps = videos.filter(v => v.seriesId === sid && v.seasonNum === snum);
-  const startEp = existingEps.length + 1;
-  
-  for (let i = 0; i < validFiles.length; i++) {
-    const file = validFiles[i];
-    const title = wizEpTitles[i] || cleanName(file.name);
-    const epNum = startEp + i;
-    
-    const fileCopy = file.slice(0, file.size, file.type);
-    
-    const rec = {
-      name: title,
-      category: 'Séries',
-      size: file.size,
-      mediaType: 'video',
-      blob: fileCopy,
-      coverBlob: null,
-      seriesId: sid,
-      seasonNum: snum,
-      episodeNum: epNum
-    };
-    
-    const id = await dbAdd(rec);
-    const url = URL.createObjectURL(fileCopy);
-    
-    videos.unshift({
-      id,
-      name: title,
-      category: 'Séries',
-      size: file.size,
-      mediaType: 'video',
-      url,
-      coverUrl: null,
-      seriesId: sid,
-      seasonNum: snum,
-      episodeNum: epNum
-    });
-    
-    importCurrentIndex++;
-  }
-  
   document.getElementById('wizModal').classList.remove('open');
-  
-  const n = validFiles.length;
-  showToast(`✅ ${n} épisode${n > 1 ? 's' : ''} importé${n > 1 ? 's' : ''} !`);
-  
+  const n=files.length;
+  showToast(`✅ ${n} épisode${n>1?'s':''} importé${n>1?'s':''} !`);
   render();
-  
-  if (wizFromSeriesPage !== null) {
-    const rsid = wizFromSeriesPage;
-    wizFromSeriesPage = null;
-    renderSeriesDetail(rsid);
-    return;
-  }
-  
-  setTimeout(() => processImportQueue(), 300);
+  if(wizFromSeriesPage!==null){const rsid=wizFromSeriesPage;wizFromSeriesPage=null;renderSeriesDetail(rsid);return;}
+  setTimeout(()=>nextCatPick(),80);
 }
 
-document.getElementById('wizSeriesCoverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  wizNewSeriesCoverFile = f;
-  const prev = document.getElementById('wizSeriesCoverPrev');
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(f);
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
-  prev.querySelectorAll('img').forEach(x => x.remove());
-  prev.appendChild(img);
-  this.value = '';
+document.getElementById('wizSeriesCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;wizNewSeriesCoverFile=f;
+  const prev=document.getElementById('wizSeriesCoverPrev');
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  prev.querySelectorAll('img').forEach(x=>x.remove());prev.appendChild(img);this.value='';
 });
-
-document.getElementById('wizSeasonCoverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  wizNewSeasonCoverFile = f;
-  const prev = document.getElementById('wizSeasonCoverPrev');
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(f);
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
-  prev.querySelectorAll('img').forEach(x => x.remove());
-  prev.appendChild(img);
-  this.value = '';
+document.getElementById('wizSeasonCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;wizNewSeasonCoverFile=f;
+  const prev=document.getElementById('wizSeasonCoverPrev');
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  prev.querySelectorAll('img').forEach(x=>x.remove());prev.appendChild(img);this.value='';
 });
 
 // ══ VIDEO MGMT ══
-async function deleteVideo(id) {
+async function deleteVideo(id){
   await dbDel(id);
-  const v = videos.find(x => x.id === id);
-  if (v) {
-    if (v.url) URL.revokeObjectURL(v.url);
-    if (v.coverUrl) URL.revokeObjectURL(v.coverUrl);
-  }
-  videos = videos.filter(x => x.id !== id);
-  featuredIds = featuredIds.filter(x => x !== id);
-  saveFeatured();
-  
-  playlists.forEach(pl => {
-    pl.videoIds = pl.videoIds.filter(x => x !== id);
-  });
-  
-  if (currentId === id) closePlayer();
+  const v=videos.find(x=>x.id===id);
+  if(v){if(v.url)URL.revokeObjectURL(v.url);if(v.coverUrl)URL.revokeObjectURL(v.coverUrl)}
+  videos=videos.filter(x=>x.id!==id);
+  featuredIds=featuredIds.filter(x=>x!==id);saveFeatured();
+  playlists.forEach(pl=>{pl.videoIds=pl.videoIds.filter(x=>x!==id)});
+  if(currentId===id)closePlayer();
   render();
-  if (currentPage === 'series-detail') renderSeriesDetail(currentSeriesId);
+  if(currentPage==='series-detail')renderSeriesDetail(currentSeriesId);
   showToast('🗑️ Vidéo supprimée');
 }
-
-async function deleteSeries(id) {
-  if (!confirm('Supprimer la série et tous ses épisodes ?')) return;
-  
-  const eps = videos.filter(v => v.seriesId === id);
-  for (const v of eps) {
-    await dbDel(v.id);
-    if (v.url) URL.revokeObjectURL(v.url);
-  }
-  videos = videos.filter(v => v.seriesId !== id);
+async function deleteSeries(id){
+  if(!confirm('Supprimer la série et tous ses épisodes ?'))return;
+  const eps=videos.filter(v=>v.seriesId===id);
+  for(const v of eps){await dbDel(v.id);if(v.url)URL.revokeObjectURL(v.url)}
+  videos=videos.filter(v=>v.seriesId!==id);
   await dbDelSeries(id);
-  
-  const s = seriesList.find(x => x.id === id);
-  if (s && s.coverUrl) URL.revokeObjectURL(s.coverUrl);
-  seriesList = seriesList.filter(x => x.id !== id);
-  
-  showToast('🗑️ Série supprimée');
-  showPage('main');
-  render();
+  const s=seriesList.find(x=>x.id===id);
+  if(s&&s.coverUrl)URL.revokeObjectURL(s.coverUrl);
+  seriesList=seriesList.filter(x=>x.id!==id);
+  showToast('🗑️ Série supprimée');showPage('main');render();
 }
 
 // ══ PLAYLISTS ══
-function openCreatePl() {
-  if (!videos.length) { showToast('❌ Importe des vidéos d\'abord !'); return; }
-  selectedVidIds = new Set();
-  plCoverFile = null;
-  document.getElementById('plNameIn').value = '';
-  document.getElementById('plCoverThumb').innerHTML = '🎵';
+function openCreatePl(){
+  if(!videos.length){showToast('❌ Importe des vidéos d\'abord !');return}
+  selectedVidIds=new Set();plCoverFile=null;
+  document.getElementById('plNameIn').value='';
+  document.getElementById('plCoverThumb').innerHTML='🎵';
   renderVideoSel();
   document.getElementById('createPlModal').classList.add('open');
 }
-
-document.getElementById('plCoverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  plCoverFile = f;
-  const thumb = document.getElementById('plCoverThumb');
-  thumb.querySelectorAll('img').forEach(x => x.remove());
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(f);
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
-  thumb.appendChild(img);
-  this.value = '';
+document.getElementById('plCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;plCoverFile=f;
+  const thumb=document.getElementById('plCoverThumb');
+  thumb.querySelectorAll('img').forEach(x=>x.remove());
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  thumb.appendChild(img);this.value='';
 });
-
-function toggleVidSel(id) {
-  selectedVidIds.has(id) ? selectedVidIds.delete(id) : selectedVidIds.add(id);
-  document.getElementById('selCount').textContent = selectedVidIds.size;
-  document.querySelectorAll('.sel-card').forEach(c => {
-    const cid = parseInt(c.dataset.id);
-    const s = selectedVidIds.has(cid);
-    c.classList.toggle('selected', s);
-    const ch = c.querySelector('.sel-check');
-    if (ch) ch.textContent = s ? '✓' : '';
-  });
+function toggleVidSel(id){
+  selectedVidIds.has(id)?selectedVidIds.delete(id):selectedVidIds.add(id);
+  document.getElementById('selCount').textContent=selectedVidIds.size;
+  document.querySelectorAll('.sel-card').forEach(c=>{const cid=parseInt(c.dataset.id);const s=selectedVidIds.has(cid);c.classList.toggle('selected',s);const ch=c.querySelector('.sel-check');if(ch)ch.textContent=s?'✓':''});
 }
-
-function renderVideoSel() {
-  document.getElementById('selCount').textContent = selectedVidIds.size;
-  document.getElementById('videoSelGrid').innerHTML = videos.map(v => {
-    const sel = selectedVidIds.has(v.id);
-    const thumb = v.coverUrl ? `<img src="${v.coverUrl}">` : `<span>${isAudio(v) ? '🎵' : '▶'}</span>`;
-    return `<div class="sel-card${sel ? ' selected' : ''}" data-id="${v.id}" onclick="toggleVidSel(${v.id})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel ? '✓' : ''}</div></div><div class="sel-title">${v.name}</div></div>`;
+function renderVideoSel(){
+  document.getElementById('selCount').textContent=selectedVidIds.size;
+  document.getElementById('videoSelGrid').innerHTML=videos.map(v=>{
+    const sel=selectedVidIds.has(v.id);
+    const thumb=v.coverUrl?`<img src="${v.coverUrl}">`:`<span>${isAudio(v)?'🎵':'▶'}</span>`;
+    return `<div class="sel-card${sel?' selected':''}" data-id="${v.id}" onclick="toggleVidSel(${v.id})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel?'✓':''}</div></div><div class="sel-title">${v.name}</div></div>`;
   }).join('');
 }
-
-async function createPlaylist() {
-  const name = document.getElementById('plNameIn').value.trim();
-  if (!name) { showToast('❌ Donne un nom'); return; }
-  if (!selectedVidIds.size) { showToast('❌ Sélectionne au moins une vidéo'); return; }
-  
-  const rec = { name, videoIds: [...selectedVidIds], coverBlob: plCoverFile || null, createdAt: Date.now() };
-  const id = await dbAddPl(rec);
-  const coverUrl = plCoverFile ? URL.createObjectURL(plCoverFile) : null;
-  playlists.unshift({ id, name, videoIds: [...selectedVidIds], coverUrl, createdAt: rec.createdAt });
-  
+async function createPlaylist(){
+  const name=document.getElementById('plNameIn').value.trim();
+  if(!name){showToast('❌ Donne un nom');return}
+  if(!selectedVidIds.size){showToast('❌ Sélectionne au moins une vidéo');return}
+  const rec={name,videoIds:[...selectedVidIds],coverBlob:plCoverFile||null,createdAt:Date.now()};
+  const id=await dbAddPl(rec);
+  const coverUrl=plCoverFile?URL.createObjectURL(plCoverFile):null;
+  playlists.unshift({id,name,videoIds:[...selectedVidIds],coverUrl,createdAt:rec.createdAt});
   document.getElementById('createPlModal').classList.remove('open');
-  showToast('✅ Série créée !');
-  renderPlaylists();
+  showToast('✅ Série créée !');renderPlaylists();
 }
-
-async function deletePl(id) {
-  if (!confirm('Supprimer cette série ?')) return;
+async function deletePl(id){
+  if(!confirm('Supprimer cette série ?'))return;
   await dbDelPl(id);
-  const pl = playlists.find(p => p.id === id);
-  if (pl && pl.coverUrl) URL.revokeObjectURL(pl.coverUrl);
-  playlists = playlists.filter(p => p.id !== id);
-  showToast('🗑️ Série supprimée');
-  showPage('playlists');
+  const pl=playlists.find(p=>p.id===id);if(pl&&pl.coverUrl)URL.revokeObjectURL(pl.coverUrl);
+  playlists=playlists.filter(p=>p.id!==id);
+  showToast('🗑️ Série supprimée');showPage('playlists');
 }
-
-function playPl(id) {
-  const pl = playlists.find(p => p.id === id);
-  if (!pl) return;
-  const ids = pl.videoIds.filter(vid => videos.find(v => v.id === vid));
-  if (!ids.length) { showToast('❌ Aucune vidéo disponible'); return; }
-  playVideo(ids[0], ids);
+function playPl(id){
+  const pl=playlists.find(p=>p.id===id);if(!pl)return;
+  const ids=pl.videoIds.filter(vid=>videos.find(v=>v.id===vid));
+  if(!ids.length){showToast('❌ Aucune vidéo disponible');return}
+  playVideo(ids[0],ids);
 }
 
 // ══ CONTEXT MENU ══
-function openCtxMenu(event, id, type, parentId) {
+function openCtxMenu(event,id,type,parentId){
   event.stopPropagation();
-  ctxTargetId = id;
-  ctxTargetType = type || 'video';
-  const menu = document.getElementById('ctxMenu');
-  const isFeat = featuredIds.includes(id);
-  let html = '';
-  
-  if (type === 'series') {
-    html = `<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier la série</button>
+  ctxTargetId=id;ctxTargetType=type||'video';
+  const menu=document.getElementById('ctxMenu');
+  const isFeat=featuredIds.includes(id);
+  let html='';
+  if(type==='series'){
+    html=`<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier la série</button>
     <div class="ctx-sep"></div>
     <button class="ctx-item danger" onclick="ctxDelete()">🗑️ Supprimer la série</button>`;
-  } else if (type === 'subseries') {
-    html = `<button class="ctx-item" onclick="openEditSubSeries(${parentId},'${id}')">✏️ Modifier</button>
+  } else if(type==='subseries'){
+    html=`<button class="ctx-item" onclick="openEditSubSeries(${parentId},'${id}')">✏️ Modifier</button>
     <div class="ctx-sep"></div>
     <button class="ctx-item danger" onclick="deleteSubSeries(${parentId},'${id}')">🗑️ Supprimer</button>`;
   } else {
-    html = `<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier</button>
-    <button class="ctx-item" id="ctxFeatBtn" onclick="ctxToggleFeat()">${isFeat ? '★ Retirer de la une' : '⭐ Mettre à la une'}</button>
+    html=`<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier</button>
+    <button class="ctx-item" id="ctxFeatBtn" onclick="ctxToggleFeat()">${isFeat?'★ Retirer de la une':'⭐ Mettre à la une'}</button>
     <div class="ctx-sep"></div>
     <button class="ctx-item danger" onclick="ctxDelete()">🗑️ Supprimer</button>`;
   }
-  
-  menu.innerHTML = html;
-  _ctxJustOpened = true;
-  menu.style.display = 'block';
-  menu.style.visibility = 'hidden';
-  
-  requestAnimationFrame(() => {
-    const btn = event.target.closest('button') || event.target;
-    const bRect = btn.getBoundingClientRect();
-    const mRect = menu.getBoundingClientRect();
-    let top = bRect.bottom + 4, left = bRect.right - mRect.width;
-    if (left < 8) left = 8;
-    if (left + mRect.width > window.innerWidth - 8) left = window.innerWidth - mRect.width - 8;
-    if (top + mRect.height > window.innerHeight - 8) top = bRect.top - mRect.height - 4;
-    menu.style.top = top + 'px';
-    menu.style.left = left + 'px';
-    menu.style.visibility = '';
+  menu.innerHTML=html;
+  _ctxJustOpened=true;
+  menu.style.display='block';menu.style.visibility='hidden';
+  requestAnimationFrame(()=>{
+    const btn=event.target.closest('button')||event.target;
+    const bRect=btn.getBoundingClientRect();
+    const mRect=menu.getBoundingClientRect();
+    let top=bRect.bottom+4,left=bRect.right-mRect.width;
+    if(left<8)left=8;
+    if(left+mRect.width>window.innerWidth-8)left=window.innerWidth-mRect.width-8;
+    if(top+mRect.height>window.innerHeight-8)top=bRect.top-mRect.height-4;
+    menu.style.top=top+'px';menu.style.left=left+'px';menu.style.visibility='';
   });
 }
-
-let _ctxJustOpened = false;
-document.addEventListener('click', () => {
-  if (_ctxJustOpened) { _ctxJustOpened = false; return; }
-  document.getElementById('ctxMenu').style.display = 'none';
-});
-
-function ctxEdit() {
-  document.getElementById('ctxMenu').style.display = 'none';
-  openEditModal(ctxTargetId, ctxTargetType);
+let _ctxJustOpened=false;
+document.addEventListener('click',()=>{if(_ctxJustOpened){_ctxJustOpened=false;return;}document.getElementById('ctxMenu').style.display='none';});
+function ctxEdit(){document.getElementById('ctxMenu').style.display='none';openEditModal(ctxTargetId,ctxTargetType)}
+function ctxToggleFeat(){
+  document.getElementById('ctxMenu').style.display='none';
+  const idx=featuredIds.indexOf(ctxTargetId);
+  if(idx>=0)featuredIds.splice(idx,1);else featuredIds.push(ctxTargetId);
+  saveFeatured();renderHero();
+  showToast(featuredIds.includes(ctxTargetId)?'⭐ Ajouté à la une':'★ Retiré de la une');
 }
-
-function ctxToggleFeat() {
-  document.getElementById('ctxMenu').style.display = 'none';
-  const idx = featuredIds.indexOf(ctxTargetId);
-  if (idx >= 0) featuredIds.splice(idx, 1);
-  else featuredIds.push(ctxTargetId);
-  saveFeatured();
-  renderHero();
-  showToast(featuredIds.includes(ctxTargetId) ? '⭐ Ajouté à la une' : '★ Retiré de la une');
-}
-
-function ctxDelete() {
-  document.getElementById('ctxMenu').style.display = 'none';
-  ctxTargetType === 'series' ? deleteSeries(ctxTargetId) : deleteVideo(ctxTargetId);
-}
+function ctxDelete(){document.getElementById('ctxMenu').style.display='none';ctxTargetType==='series'?deleteSeries(ctxTargetId):deleteVideo(ctxTargetId)}
 
 // ══ EDIT MODAL ══
-function openEditModal(id, type) {
-  editCoverFile = null;
-  let name, coverUrl;
-  
-  if (type === 'series') {
-    const s = seriesList.find(x => x.id === id);
-    if (!s) return;
-    name = s.name;
-    coverUrl = s.coverUrl;
-  } else {
-    const v = videos.find(x => x.id === id);
-    if (!v) return;
-    name = v.name;
-    coverUrl = v.coverUrl;
-  }
-  
-  document.getElementById('editTitleIn').value = name;
-  const prev = document.getElementById('editCoverPrev');
-  prev.innerHTML = coverUrl ? `<img src="${coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">` : '🎬';
+function openEditModal(id,type){
+  editCoverFile=null;
+  let name,coverUrl;
+  if(type==='series'){const s=seriesList.find(x=>x.id===id);if(!s)return;name=s.name;coverUrl=s.coverUrl}
+  else{const v=videos.find(x=>x.id===id);if(!v)return;name=v.name;coverUrl=v.coverUrl}
+  document.getElementById('editTitleIn').value=name;
+  const prev=document.getElementById('editCoverPrev');
+  prev.innerHTML=coverUrl?`<img src="${coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:'🎬';
   document.getElementById('editModal').classList.add('open');
 }
-
-document.getElementById('editCoverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  editCoverFile = f;
-  const prev = document.getElementById('editCoverPrev');
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(f);
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
-  prev.querySelectorAll('img').forEach(x => x.remove());
-  prev.appendChild(img);
-  this.value = '';
+document.getElementById('editCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;editCoverFile=f;
+  const prev=document.getElementById('editCoverPrev');
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  prev.querySelectorAll('img').forEach(x=>x.remove());prev.appendChild(img);this.value='';
 });
-
-async function saveEdit() {
-  const name = document.getElementById('editTitleIn').value.trim();
-  if (!name) { showToast('❌ Le nom ne peut pas être vide'); return; }
-  
+async function saveEdit(){
+  const name=document.getElementById('editTitleIn').value.trim();
+  if(!name){showToast('❌ Le nom ne peut pas être vide');return}
   document.getElementById('editModal').classList.remove('open');
-  
-  if (ctxTargetType === 'series') {
-    const s = seriesList.find(x => x.id === ctxTargetId);
-    if (!s) return;
-    s.name = name;
-    if (editCoverFile) {
-      if (s.coverUrl) URL.revokeObjectURL(s.coverUrl);
-      s.coverUrl = URL.createObjectURL(editCoverFile);
-    }
-    await dbPutSeries(ctxTargetId, { name, ...(editCoverFile ? { coverBlob: editCoverFile } : {}) });
+  if(ctxTargetType==='series'){
+    const s=seriesList.find(x=>x.id===ctxTargetId);if(!s)return;
+    s.name=name;
+    if(editCoverFile){if(s.coverUrl)URL.revokeObjectURL(s.coverUrl);s.coverUrl=URL.createObjectURL(editCoverFile)}
+    await dbPutSeries(ctxTargetId,{name,...(editCoverFile?{coverBlob:editCoverFile}:{})});
   } else {
-    const v = videos.find(x => x.id === ctxTargetId);
-    if (!v) return;
-    v.name = name;
-    if (editCoverFile) {
-      if (v.coverUrl) URL.revokeObjectURL(v.coverUrl);
-      v.coverUrl = URL.createObjectURL(editCoverFile);
-    }
-    await dbPutVideo(ctxTargetId, { name, ...(editCoverFile ? { coverBlob: editCoverFile } : {}) });
+    const v=videos.find(x=>x.id===ctxTargetId);if(!v)return;
+    v.name=name;
+    if(editCoverFile){if(v.coverUrl)URL.revokeObjectURL(v.coverUrl);v.coverUrl=URL.createObjectURL(editCoverFile)}
+    await dbPutVideo(ctxTargetId,{name,...(editCoverFile?{coverBlob:editCoverFile}:{})});
   }
-  
-  showToast('✅ Modifié !');
-  render();
-  if (currentPage === 'series-detail') renderSeriesDetail(currentSeriesId);
+  showToast('✅ Modifié !');render();
+  if(currentPage==='series-detail')renderSeriesDetail(currentSeriesId);
 }
 
 // ══ NAVIGATION ══
-function showPage(page, data) {
-  currentPage = page;
-  
-  ['page-main', 'page-playlists', 'page-pl-detail', 'page-series-detail', 'page-sub-detail'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
+function showPage(page,data){
+  currentPage=page;
+  ['page-main','page-playlists','page-pl-detail','page-series-detail','page-sub-detail'].forEach(id=>{
+    document.getElementById(id).style.display='none';
   });
-  
-  const pageMap = { main: 'main', playlists: 'playlists', 'pl-detail': 'pl-detail', 'series-detail': 'series-detail', 'sub-detail': 'sub-detail' };
-  document.getElementById('page-' + (pageMap[page] || 'main')).style.display = '';
+  const pageMap={main:'main',playlists:'playlists','pl-detail':'pl-detail','series-detail':'series-detail','sub-detail':'sub-detail'};
+  document.getElementById('page-'+(pageMap[page]||'main')).style.display='';
   document.getElementById('mobMenu').classList.remove('open');
-  
-  if (page === 'playlists') renderPlaylists();
-  if (page === 'pl-detail' && data != null) { currentPlId = data; renderPlDetail(data); }
-  if (page === 'series-detail' && data != null) { currentSeriesId = data; renderSeriesDetail(data); }
-  
-  scrollTo(0, 0);
+  if(page==='playlists')renderPlaylists();
+  if(page==='pl-detail'&&data!=null){currentPlId=data;renderPlDetail(data)}
+  if(page==='series-detail'&&data!=null){currentSeriesId=data;renderSeriesDetail(data)}
+  scrollTo(0,0);
 }
 
 // ══ HERO SLIDER ══
-function renderHero() {
-  const track = document.getElementById('heroTrack');
-  const dots = document.getElementById('heroDots');
-  const prev = document.getElementById('heroPrev');
-  const next = document.getElementById('heroNext');
-  
-  let featVids = featuredIds.map(id => videos.find(v => v.id === id)).filter(Boolean);
-  if (!featVids.length && videos.length) featVids = [videos[0]];
-  
-  if (!featVids.length) {
-    track.innerHTML = `<div class="hero-slide" style="background:#080810"><div class="hero-overlay"></div><div class="hero-content"><div class="hero-empty-state"><div style="font-size:64px">🎬</div><h2>AUCUNE VIDÉO</h2><p>Clique sur <strong style="color:var(--red)">Importer</strong></p></div></div></div>`;
-    dots.innerHTML = '';
-    prev.style.display = next.style.display = 'none';
-    stopHeroTimer();
-    return;
+function renderHero(){
+  const track=document.getElementById('heroTrack');
+  const dots=document.getElementById('heroDots');
+  const prev=document.getElementById('heroPrev');
+  const next=document.getElementById('heroNext');
+  let featVids=featuredIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+  if(!featVids.length&&videos.length)featVids=[videos[0]];
+  if(!featVids.length){
+    track.innerHTML=`<div class="hero-slide" style="background:#080810"><div class="hero-overlay"></div><div class="hero-content"><div class="hero-empty-state"><div style="font-size:64px">🎬</div><h2>AUCUNE VIDÉO</h2><p>Clique sur <strong style="color:var(--red)">Importer</strong></p></div></div></div>`;
+    dots.innerHTML='';prev.style.display=next.style.display='none';
+    stopHeroTimer();return;
   }
-  
-  track.innerHTML = featVids.map((v, i) => `
+  track.innerHTML=featVids.map((v,i)=>`
     <div class="hero-slide" style="background-color:#0a0a18">
       <div class="hero-overlay"></div>
       <div class="hero-content">
@@ -1690,154 +1217,116 @@ function renderHero() {
         </div>
       </div>
     </div>`).join('');
-  
-  featVids.forEach((v, i) => {
-    const slide = track.children[i];
-    if (v.coverUrl) slide.style.backgroundImage = `url(${v.coverUrl})`;
-    else if (!isAudio(v)) generateThumb(v.url).then(img => { if (img && slide) slide.style.backgroundImage = `url(${img})`; });
+  featVids.forEach((v,i)=>{
+    const slide=track.children[i];
+    if(v.coverUrl)slide.style.backgroundImage=`url(${v.coverUrl})`;
+    else if(!isAudio(v))generateThumb(v.url).then(img=>{if(img&&slide)slide.style.backgroundImage=`url(${img})`});
   });
-  
-  if (featVids.length > 1) {
-    dots.innerHTML = featVids.map((_, i) => `<div class="hero-dot${i === 0 ? ' active' : ''}" onclick="goHeroSlide(${i})"></div>`).join('');
-    prev.style.display = next.style.display = '';
-  } else {
-    dots.innerHTML = '';
-    prev.style.display = next.style.display = 'none';
-  }
-  
-  heroIdx = 0;
-  updateHeroTransform();
-  startHeroTimer();
+  if(featVids.length>1){
+    dots.innerHTML=featVids.map((_,i)=>`<div class="hero-dot${i===0?' active':''}" onclick="goHeroSlide(${i})"></div>`).join('');
+    prev.style.display=next.style.display='';
+  } else {dots.innerHTML='';prev.style.display=next.style.display='none'}
+  heroIdx=0;updateHeroTransform();startHeroTimer();
 }
-
-function updateHeroTransform() {
-  document.getElementById('heroTrack').style.transform = `translateX(-${heroIdx * 100}%)`;
+function updateHeroTransform(){
+  document.getElementById('heroTrack').style.transform=`translateX(-${heroIdx*100}%)`;
 }
-
-function goHeroSlide(i) {
-  heroIdx = i;
-  updateHeroTransform();
-  updateHeroDots();
-  startHeroTimer();
+function goHeroSlide(i){
+  heroIdx=i;updateHeroTransform();updateHeroDots();startHeroTimer();
 }
-
-function heroAdv(dir) {
-  const count = document.getElementById('heroTrack').children.length;
-  if (!count) return;
-  heroIdx = (heroIdx + dir + count) % count;
-  updateHeroTransform();
-  updateHeroDots();
+function heroAdv(dir){
+  const count=document.getElementById('heroTrack').children.length;
+  if(!count)return;
+  heroIdx=(heroIdx+dir+count)%count;
+  updateHeroTransform();updateHeroDots();
 }
-
-function updateHeroDots() {
-  document.querySelectorAll('.hero-dot').forEach((d, i) => d.classList.toggle('active', i === heroIdx));
+function updateHeroDots(){
+  document.querySelectorAll('.hero-dot').forEach((d,i)=>d.classList.toggle('active',i===heroIdx));
 }
-
-function startHeroTimer() {
+function startHeroTimer(){
   stopHeroTimer();
-  if (document.getElementById('heroTrack').children.length > 1)
-    heroTimer = setInterval(() => heroAdv(1), 6000);
+  if(document.getElementById('heroTrack').children.length>1)
+    heroTimer=setInterval(()=>heroAdv(1),6000);
 }
-
-function stopHeroTimer() { if (heroTimer) { clearInterval(heroTimer); heroTimer = null; } }
+function stopHeroTimer(){if(heroTimer){clearInterval(heroTimer);heroTimer=null}}
 
 // ══ RENDER ══
-function render() {
-  renderHero();
-  renderSections();
-  const q = document.getElementById('searchInput').value;
-  if (q) handleSearch(q);
-  setTimeout(() => document.querySelectorAll('.video-card').forEach(c => thumbObs.observe(c)), 100);
+function render(){
+  renderHero();renderSections();
+  const q=document.getElementById('searchInput').value;
+  if(q)handleSearch(q);
+  setTimeout(()=>document.querySelectorAll('.video-card').forEach(c=>thumbObs.observe(c)),100);
 }
-
-const FIXED_CATS = ['Films', 'Séries', 'Documentaires', 'YouTube'];
-const HIDDEN_CATS = ['Autre'];
-
-function renderSections() {
+const FIXED_CATS=['Films','Séries','Documentaires','YouTube'];
+const HIDDEN_CATS=['Autre']; // cachées de l'accueil, visibles dans les playlists
+function renderSections(){
   [
-    { cat: 'Films', sec: 'sec-films', grd: 'grd-films', cnt: 'cnt-films' },
-    { cat: 'Documentaires', sec: 'sec-docs', grd: 'grd-docs', cnt: 'cnt-docs' },
-    { cat: 'YouTube', sec: 'sec-yt', grd: 'grd-yt', cnt: 'cnt-yt' },
-  ].forEach(({ cat, sec, grd, cnt }) => {
-    const vids = videos.filter(v => v.category === cat);
-    const el = document.getElementById(sec);
-    if (vids.length) {
-      el.style.display = '';
-      document.getElementById(grd).innerHTML = vids.map(v => cardHTML(v)).join('');
-      document.getElementById(cnt).textContent = vids.length;
-    } else {
-      el.style.display = 'none';
-    }
+    {cat:'Films',sec:'sec-films',grd:'grd-films',cnt:'cnt-films'},
+    {cat:'Documentaires',sec:'sec-docs',grd:'grd-docs',cnt:'cnt-docs'},
+    {cat:'YouTube',sec:'sec-yt',grd:'grd-yt',cnt:'cnt-yt'},
+  ].forEach(({cat,sec,grd,cnt})=>{
+    const vids=videos.filter(v=>v.category===cat);
+    const el=document.getElementById(sec);
+    if(vids.length){el.style.display='';document.getElementById(grd).innerHTML=vids.map(v=>cardHTML(v)).join('');document.getElementById(cnt).textContent=vids.length}
+    else el.style.display='none';
   });
-  
-  const activeSeries = seriesList.filter(s => videos.some(v => v.seriesId === s.id));
-  const sec = document.getElementById('sec-series');
-  if (activeSeries.length) {
-    sec.style.display = '';
-    document.getElementById('grd-series').innerHTML = activeSeries.map(s => seriesCardHTML(s)).join('');
-    document.getElementById('cnt-series').textContent = activeSeries.length;
-  } else {
-    sec.style.display = 'none';
-  }
-  
-  const otherCats = [...new Set(videos.map(v => v.category).filter(c => c && !FIXED_CATS.includes(c) && !HIDDEN_CATS.includes(c)))];
-  document.getElementById('sec-autres').innerHTML = otherCats.map(cat => {
-    const vids = videos.filter(v => v.category === cat);
+  const activeSeries=seriesList.filter(s=>videos.some(v=>v.seriesId===s.id));
+  const sec=document.getElementById('sec-series');
+  if(activeSeries.length){sec.style.display='';document.getElementById('grd-series').innerHTML=activeSeries.map(s=>seriesCardHTML(s)).join('');document.getElementById('cnt-series').textContent=activeSeries.length}
+  else sec.style.display='none';
+  // Catégories custom — on exclut "Autre" de l'affichage accueil
+  const otherCats=[...new Set(videos.map(v=>v.category).filter(c=>c&&!FIXED_CATS.includes(c)&&!HIDDEN_CATS.includes(c)))];
+  document.getElementById('sec-autres').innerHTML=otherCats.map(cat=>{
+    const vids=videos.filter(v=>v.category===cat);
     return `<div class="section" style="margin-top:40px">
       <div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:var(--muted)"></div><span class="section-title">${cat.toUpperCase()}</span></div><span class="section-count">${vids.length}</span></div>
-      <div class="video-grid">${vids.map(v => cardHTML(v)).join('')}</div>
+      <div class="video-grid">${vids.map(v=>cardHTML(v)).join('')}</div>
     </div>`;
   }).join('');
-  
-  const secPl = document.getElementById('sec-playlists');
-  if (playlists.length) {
-    secPl.style.display = '';
-    document.getElementById('cnt-playlists').textContent = playlists.length;
-    document.getElementById('grd-playlists').innerHTML = playlists.map(pl => {
-      const count = pl.videoIds.filter(id => videos.find(v => v.id === id)).length;
+  // Playlists (Séries) sur la page principale
+  const secPl=document.getElementById('sec-playlists');
+  if(playlists.length){
+    secPl.style.display='';
+    document.getElementById('cnt-playlists').textContent=playlists.length;
+    document.getElementById('grd-playlists').innerHTML=playlists.map(pl=>{
+      const count=pl.videoIds.filter(id=>videos.find(v=>v.id===id)).length;
       return `<div class="pl-card" onclick="showPage('pl-detail',${pl.id})">
-        <div class="pl-cover">${pl.coverUrl ? `<img src="${pl.coverUrl}">` : '🎵'}<div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playPl(${pl.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>
-        <div class="pl-info"><div class="pl-name">${pl.name}</div><div class="pl-count">${count} vidéo${count !== 1 ? 's' : ''}</div></div>
+        <div class="pl-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}<div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playPl(${pl.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>
+        <div class="pl-info"><div class="pl-name">${pl.name}</div><div class="pl-count">${count} vidéo${count!==1?'s':''}</div></div>
       </div>`;
     }).join('');
-  } else {
-    secPl.style.display = 'none';
-  }
-  
-  const visibleCount = videos.filter(v => v.category !== 'Autre').length;
-  document.getElementById('main-empty').style.display = visibleCount ? 'none' : '';
-}
+  } else secPl.style.display='none';
 
-function renderPlaylists() {
-  const grid = document.getElementById('plGrid');
-  if (!playlists.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎵</div><h3>AUCUNE SÉRIE</h3><p>Crée ta première série avec le bouton ci-dessus</p></div>`;
-    return;
-  }
-  
-  grid.innerHTML = playlists.map(pl => {
-    const count = pl.videoIds.filter(id => videos.find(v => v.id === id)).length;
+  // Pour l'empty state, on compte quand même toutes les vidéos visibles (hors Autre)
+  const visibleCount=videos.filter(v=>v.category!=='Autre').length;
+  document.getElementById('main-empty').style.display=visibleCount?'none':'';
+}
+function renderPlaylists(){
+  const grid=document.getElementById('plGrid');
+  if(!playlists.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎵</div><h3>AUCUNE SÉRIE</h3><p>Crée ta première série avec le bouton ci-dessus</p></div>`;return}
+  grid.innerHTML=playlists.map(pl=>{
+    const count=pl.videoIds.filter(id=>videos.find(v=>v.id===id)).length;
     return `<div class="pl-card" onclick="showPage('pl-detail',${pl.id})">
-      <div class="pl-cover">${pl.coverUrl ? `<img src="${pl.coverUrl}">` : '🎵'}<div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playPl(${pl.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>
-      <div class="pl-info"><div class="pl-name">${pl.name}</div><div class="pl-count">${count} vidéo${count !== 1 ? 's' : ''}</div></div>
+      <div class="pl-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}<div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playPl(${pl.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>
+      <button class="card-menu-btn" onclick="openCtxMenu(event,${pl.id},'playlist')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+      <div class="pl-info"><div class="pl-name">${pl.name}</div><div class="pl-count">${count} vidéo${count!==1?'s':''}</div></div>
     </div>`;
   }).join('');
 }
+function renderPlDetail(plId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl){showPage('playlists');return}
+  const plVids=pl.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+  const subs=pl.subseries||[];
+  // All video ids already in a subseries
+  const inSubIds=new Set(subs.flatMap(ss=>ss.videoIds));
+  // Free videos = in playlist but not in any subseries
+  const freeVids=plVids.filter(v=>!inSubIds.has(v.id));
 
-function renderPlDetail(plId) {
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) { showPage('playlists'); return; }
-  
-  const plVids = pl.videoIds.map(id => videos.find(v => v.id === id)).filter(Boolean);
-  const subs = pl.subseries || [];
-  const inSubIds = new Set(subs.flatMap(ss => ss.videoIds));
-  const freeVids = plVids.filter(v => !inSubIds.has(v.id));
-  
-  const subCardsHTML = subs.map(ss => {
-    const ssVids = ss.videoIds.map(id => videos.find(v => v.id === id)).filter(Boolean);
-    const cover = ss.coverUrl
-      ? `<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`
-      : `<span style="font-size:36px">📺</span>`;
+  const subCardsHTML=subs.map(ss=>{
+    const ssVids=ss.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+    const cover=ss.coverUrl
+      ?`<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`
+      :`<span style="font-size:36px">📺</span>`;
     return `<div class="video-card" onclick="showSubSeries(${pl.id},'${ss.id}')">
       <div class="thumb-wrap" style="background:linear-gradient(135deg,#1a0a2e,#0a1a2e)">
         ${cover}
@@ -1845,7 +1334,7 @@ function renderPlDetail(plId) {
       </div>
       <div class="video-info">
         <div class="video-title">${ss.name}</div>
-        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Saison</span><span class="video-size">${ssVids.length} vidéo${ssVids.length !== 1 ? 's' : ''}</span></div>
+        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Saison</span><span class="video-size">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</span></div>
       </div>
       <div class="card-action-bar" onclick="event.stopPropagation()">
         <button class="card-menu-btn-ext" onclick="openCtxMenu(event,'${ss.id}','subseries',${pl.id})">
@@ -1855,19 +1344,19 @@ function renderPlDetail(plId) {
       </div>
     </div>`;
   }).join('');
-  
-  document.getElementById('plDetailContent').innerHTML = `
+
+  document.getElementById('plDetailContent').innerHTML=`
     <div class="page-top-bar">
       <div class="page-top-bar-left"><button class="back-btn" onclick="showPage('playlists')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Séries</button></div>
       <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deletePl(${pl.id})">🗑️ Supprimer</button>
     </div>
     <div class="detail-hero">
-      <div class="detail-cover">${pl.coverUrl ? `<img src="${pl.coverUrl}">` : '🎵'}</div>
+      <div class="detail-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}</div>
       <div class="detail-info">
         <div class="detail-name">${pl.name}</div>
-        <div class="detail-meta">${subs.length} saison${subs.length !== 1 ? 's' : ''} · ${plVids.length} vidéo${plVids.length !== 1 ? 's' : ''}</div>
+        <div class="detail-meta">${subs.length} saison${subs.length!==1?'s':''} · ${plVids.length} vidéo${plVids.length!==1?'s':''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-          ${plVids.length ? `<button class="btn-play" onclick="playPl(${pl.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>` : ''}
+          ${plVids.length?`<button class="btn-play" onclick="playPl(${pl.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
           <button class="btn-ghost" onclick="openCreateSubSeries(${pl.id})" style="display:flex;align-items:center;gap:7px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nouvelle saison
           </button>
@@ -1877,378 +1366,257 @@ function renderPlDetail(plId) {
         </div>
       </div>
     </div>
-    ${subs.length ? `<div class="section"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:#a855f7"></div><span class="section-title">SAISONS</span></div><span class="section-count">${subs.length}</span></div><div class="video-grid">${subCardsHTML}</div></div>` : ''}
-    ${freeVids.length ? `<div class="section" style="margin-top:24px"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:var(--red)"></div><span class="section-title">VIDÉOS</span></div><span class="section-count">${freeVids.length}</span></div><div class="video-grid" id="plDetailGrid">${freeVids.map(v => cardHTML(v)).join('')}</div></div>` : ''}
-    ${!subs.length && !freeVids.length ? `<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3><p>Crée une saison ou ajoute des vidéos</p></div>` : ''}`;
-  
-  setTimeout(() => document.querySelectorAll('#plDetailContent .video-card').forEach(c => thumbObs.observe(c)), 100);
+    ${subs.length?`<div class="section"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:#a855f7"></div><span class="section-title">SAISONS</span></div><span class="section-count">${subs.length}</span></div><div class="video-grid">${subCardsHTML}</div></div>`:''}
+    ${freeVids.length?`<div class="section" style="margin-top:24px"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:var(--red)"></div><span class="section-title">VIDÉOS</span></div><span class="section-count">${freeVids.length}</span></div><div class="video-grid" id="plDetailGrid">${freeVids.map(v=>cardHTML(v)).join('')}</div></div>`:''}
+    ${!subs.length&&!freeVids.length?`<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3><p>Crée une saison ou ajoute des vidéos</p></div>`:''}`;
+  setTimeout(()=>document.querySelectorAll('#plDetailContent .video-card').forEach(c=>thumbObs.observe(c)),100);
 }
 
-let addPlTargetId = null;
-
-function openAddVideosToPl(plId) {
-  addPlTargetId = plId;
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) return;
-  
-  selectedVidIds = new Set(pl.videoIds);
-  document.getElementById('addVidsPlName').textContent = pl.name;
-  document.getElementById('selCount2').textContent = selectedVidIds.size;
+let addPlTargetId=null;
+function openAddVideosToPl(plId){
+  addPlTargetId=plId;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  // init selection from existing ids
+  selectedVidIds=new Set(pl.videoIds);
+  document.getElementById('addVidsPlName').textContent=pl.name;
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
   renderVideoSel2();
   document.getElementById('addVideosToPl').classList.add('open');
 }
-
-function renderVideoSel2() {
-  document.getElementById('selCount2').textContent = selectedVidIds.size;
-  document.getElementById('videoSelGrid2').innerHTML = videos.map(v => {
-    const sel = selectedVidIds.has(v.id);
-    const thumb = v.coverUrl ? `<img src="${v.coverUrl}">` : `<span>${isAudio(v) ? '🎵' : '▶'}</span>`;
-    return `<div class="sel-card${sel ? ' selected' : ''}" data-id="${v.id}" onclick="toggleVidSel2(${v.id})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel ? '✓' : ''}</div></div><div class="sel-title">${v.name}</div></div>`;
+function renderVideoSel2(){
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
+  document.getElementById('videoSelGrid2').innerHTML=videos.map(v=>{
+    const sel=selectedVidIds.has(v.id);
+    const thumb=v.coverUrl?`<img src="${v.coverUrl}">`:`<span>${isAudio(v)?'🎵':'▶'}</span>`;
+    return `<div class="sel-card${sel?' selected':''}" data-id="${v.id}" onclick="toggleVidSel2(${v.id})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel?'✓':''}</div></div><div class="sel-title">${v.name}</div></div>`;
   }).join('');
 }
-
-function toggleVidSel2(id) {
-  selectedVidIds.has(id) ? selectedVidIds.delete(id) : selectedVidIds.add(id);
-  document.getElementById('selCount2').textContent = selectedVidIds.size;
-  document.querySelectorAll('#videoSelGrid2 .sel-card').forEach(c => {
-    const cid = parseInt(c.dataset.id);
-    const s = selectedVidIds.has(cid);
-    c.classList.toggle('selected', s);
-    const ch = c.querySelector('.sel-check');
-    if (ch) ch.textContent = s ? '✓' : '';
-  });
+function toggleVidSel2(id){
+  selectedVidIds.has(id)?selectedVidIds.delete(id):selectedVidIds.add(id);
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
+  document.querySelectorAll('#videoSelGrid2 .sel-card').forEach(c=>{const cid=parseInt(c.dataset.id);const s=selectedVidIds.has(cid);c.classList.toggle('selected',s);const ch=c.querySelector('.sel-check');if(ch)ch.textContent=s?'✓':''});
 }
-
-async function saveAddVideosToPl() {
-  const pl = playlists.find(p => p.id === addPlTargetId);
-  if (!pl) return;
-  
-  pl.videoIds = [...selectedVidIds];
-  await dbPutPlaylist(addPlTargetId, { videoIds: [...selectedVidIds] });
-  
+async function saveAddVideosToPl(){
+  const pl=playlists.find(p=>p.id===addPlTargetId);if(!pl)return;
+  pl.videoIds=[...selectedVidIds];
+  await new Promise((res,rej)=>{
+    const tx=db.transaction('playlists','readwrite'),s=tx.objectStore('playlists'),r=s.get(addPlTargetId);
+    r.onsuccess=()=>{const rec=r.result;rec.videoIds=[...selectedVidIds];s.put(rec);tx.oncomplete=res;tx.onerror=rej};
+  });
   document.getElementById('addVideosToPl').classList.remove('open');
   showToast('✅ Série mise à jour !');
   renderPlDetail(addPlTargetId);
 }
 
 // ══ SAISONS ══
-let currentSubPlId = null, currentSubId = null;
+let currentSubPlId=null,currentSubId=null;
 
-function openCreateSubSeries(plId) {
-  currentSubPlId = plId;
-  document.getElementById('subSeriesNameIn').value = '';
-  document.getElementById('subSeriesCoverThumb').innerHTML = '📺';
-  subSeriesCoverFile = null;
-  
-  const pl = playlists.find(p => p.id === plId);
-  const inSubIds = new Set((pl.subseries || []).flatMap(ss => ss.videoIds));
-  selectedVidIds = new Set(pl.videoIds.filter(id => !inSubIds.has(id)));
-  
-  document.getElementById('subSelCount').textContent = selectedVidIds.size;
+function openCreateSubSeries(plId){
+  currentSubPlId=plId;
+  document.getElementById('subSeriesNameIn').value='';
+  document.getElementById('subSeriesCoverThumb').innerHTML='📺';
+  subSeriesCoverFile=null;
+  // Init selection = vidéos pas encore dans une saison
+  const pl=playlists.find(p=>p.id===plId);
+  const inSubIds=new Set((pl.subseries||[]).flatMap(ss=>ss.videoIds));
+  selectedVidIds=new Set(pl.videoIds.filter(id=>!inSubIds.has(id)));
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
   renderSubVideoSel(plId);
   document.getElementById('createSubSeriesModal').classList.add('open');
 }
-
-let subSeriesCoverFile = null;
-
-document.getElementById('subSeriesCoverInput').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  subSeriesCoverFile = f;
-  const thumb = document.getElementById('subSeriesCoverThumb');
-  thumb.querySelectorAll('img').forEach(x => x.remove());
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(f);
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
-  thumb.appendChild(img);
-  this.value = '';
+let subSeriesCoverFile=null;
+document.getElementById('subSeriesCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;subSeriesCoverFile=f;
+  const thumb=document.getElementById('subSeriesCoverThumb');
+  thumb.querySelectorAll('img').forEach(x=>x.remove());
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  thumb.appendChild(img);this.value='';
 });
-
-function renderSubVideoSel(plId) {
-  const pl = playlists.find(p => p.id === plId);
-  const plVidIds = new Set(pl.videoIds);
-  const plVids = videos.filter(v => plVidIds.has(v.id));
-  
-  document.getElementById('subSelCount').textContent = selectedVidIds.size;
-  document.getElementById('subVideoSelGrid').innerHTML = plVids.map(v => {
-    const sel = selectedVidIds.has(v.id);
-    const thumb = v.coverUrl ? `<img src="${v.coverUrl}">` : `<span>${isAudio(v) ? '🎵' : '▶'}</span>`;
-    return `<div class="sel-card${sel ? ' selected' : ''}" data-id="${v.id}" onclick="toggleSubVidSel(${v.id},${plId})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel ? '✓' : ''}</div></div><div class="sel-title">${v.name}</div></div>`;
-  }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px">Ajoute d\'abord des vidéos à la série principale</div>';
+function renderSubVideoSel(plId){
+  const pl=playlists.find(p=>p.id===plId);
+  const plVidIds=new Set(pl.videoIds);
+  const plVids=videos.filter(v=>plVidIds.has(v.id));
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  document.getElementById('subVideoSelGrid').innerHTML=plVids.map(v=>{
+    const sel=selectedVidIds.has(v.id);
+    const thumb=v.coverUrl?`<img src="${v.coverUrl}">`:`<span>${isAudio(v)?'🎵':'▶'}</span>`;
+    return `<div class="sel-card${sel?' selected':''}" data-id="${v.id}" onclick="toggleSubVidSel(${v.id},${plId})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel?'✓':''}</div></div><div class="sel-title">${v.name}</div></div>`;
+  }).join('')||'<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px">Ajoute d\'abord des vidéos à la série principale</div>';
 }
-
-function toggleSubVidSel(id, plId) {
-  selectedVidIds.has(id) ? selectedVidIds.delete(id) : selectedVidIds.add(id);
-  document.getElementById('subSelCount').textContent = selectedVidIds.size;
-  document.querySelectorAll('#subVideoSelGrid .sel-card').forEach(c => {
-    const cid = parseInt(c.dataset.id);
-    const s = selectedVidIds.has(cid);
-    c.classList.toggle('selected', s);
-    const ch = c.querySelector('.sel-check');
-    if (ch) ch.textContent = s ? '✓' : '';
-  });
+function toggleSubVidSel(id,plId){
+  selectedVidIds.has(id)?selectedVidIds.delete(id):selectedVidIds.add(id);
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  document.querySelectorAll('#subVideoSelGrid .sel-card').forEach(c=>{const cid=parseInt(c.dataset.id);const s=selectedVidIds.has(cid);c.classList.toggle('selected',s);const ch=c.querySelector('.sel-check');if(ch)ch.textContent=s?'✓':''});
 }
-
-async function saveCreateSubSeries() {
-  const name = document.getElementById('subSeriesNameIn').value.trim();
-  if (!name) { showToast('❌ Donne un nom'); return; }
-  
-  const pl = playlists.find(p => p.id === currentSubPlId);
-  if (!pl) return;
-  
-  pl.subseries = pl.subseries || [];
-  const ssId = 'ss_' + Date.now();
-  const coverUrl = subSeriesCoverFile ? URL.createObjectURL(subSeriesCoverFile) : null;
-  pl.subseries.push({ id: ssId, name, videoIds: [...selectedVidIds], coverUrl });
-  
-  await new Promise((res, rej) => {
-    const tx = db.transaction('playlists', 'readwrite');
-    const s = tx.objectStore('playlists');
-    const r = s.get(currentSubPlId);
-    r.onsuccess = () => {
-      const rec = r.result;
-      rec.subseries = rec.subseries || [];
-      rec.subseries.push({
-        id: ssId,
-        name,
-        videoIds: [...selectedVidIds],
-        coverBlob: subSeriesCoverFile || null
-      });
-      s.put(rec);
-      tx.oncomplete = res;
-      tx.onerror = rej;
-    };
-  });
-  
+async function saveCreateSubSeries(){
+  const name=document.getElementById('subSeriesNameIn').value.trim();
+  if(!name){showToast('❌ Donne un nom');return}
+  const pl=playlists.find(p=>p.id===currentSubPlId);if(!pl)return;
+  pl.subseries=pl.subseries||[];
+  const ssId='ss_'+Date.now();
+  const coverUrl=subSeriesCoverFile?URL.createObjectURL(subSeriesCoverFile):null;
+  pl.subseries.push({id:ssId,name,videoIds:[...selectedVidIds],coverUrl});
+  await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries.map(ss=>({...ss,coverBlob:ss.coverUrl&&subSeriesCoverFile&&ss.id===ssId?subSeriesCoverFile:null}))});
   document.getElementById('createSubSeriesModal').classList.remove('open');
   showToast('✅ Saison créée !');
   renderPlDetail(currentSubPlId);
 }
+function dbPutPlaylist(id,updates){
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('playlists','readwrite'),s=tx.objectStore('playlists'),r=s.get(id);
+    r.onsuccess=()=>{const rec=r.result;Object.assign(rec,updates);const p=s.put(rec);p.onsuccess=()=>res();p.onerror=()=>rej(p.error)};
+    r.onerror=()=>rej(r.error);
+  });
+}
 
-function showSubSeries(plId, ssId) {
-  currentSubPlId = plId;
-  currentSubId = ssId;
-  
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) return;
-  
-  const ss = (pl.subseries || []).find(s => s.id === ssId);
-  if (!ss) return;
-  
-  const ssVids = ss.videoIds.map(id => videos.find(v => v.id === id)).filter(Boolean);
-  
-  document.getElementById('subDetailContent').innerHTML = `
+// Page saison
+function showSubSeries(plId,ssId){
+  currentSubPlId=plId;currentSubId=ssId;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss)return;
+  const ssVids=ss.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+  document.getElementById('subDetailContent').innerHTML=`
     <div class="page-top-bar">
       <div class="page-top-bar-left"><button class="back-btn" onclick="showPage('pl-detail',${plId})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Retour</button></div>
       <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deleteSubSeries(${plId},'${ssId}')">🗑️ Supprimer</button>
     </div>
     <div class="detail-hero">
-      <div class="detail-cover">${ss.coverUrl ? `<img src="${ss.coverUrl}">` : '📺'}</div>
+      <div class="detail-cover">${ss.coverUrl?`<img src="${ss.coverUrl}">`:'📺'}</div>
       <div class="detail-info">
         <div class="detail-name">${ss.name}</div>
-        <div class="detail-meta">${ssVids.length} vidéo${ssVids.length !== 1 ? 's' : ''}</div>
+        <div class="detail-meta">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-          ${ssVids.length ? `<button class="btn-play" onclick="playSubSeries('${ssId}',${plId})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>` : ''}
+          ${ssVids.length?`<button class="btn-play" onclick="playSubSeries('${ssId}',${plId})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
           <button class="btn-ghost" onclick="openEditSubSeries(${plId},'${ssId}')" style="display:flex;align-items:center;gap:7px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Modifier
           </button>
         </div>
       </div>
     </div>
-    <div class="video-grid">${ssVids.length ? ssVids.map(v => cardHTML(v)).join('') : '<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3></div>'}</div>`;
-  
+    <div class="video-grid">${ssVids.length?ssVids.map(v=>cardHTML(v)).join(''):'<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3></div>'}</div>`;
   showPage('sub-detail');
-  setTimeout(() => document.querySelectorAll('#subDetailContent .video-card').forEach(c => thumbObs.observe(c)), 100);
+  setTimeout(()=>document.querySelectorAll('#subDetailContent .video-card').forEach(c=>thumbObs.observe(c)),100);
 }
-
-function playSubSeries(ssId, plId) {
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) return;
-  
-  const ss = (pl.subseries || []).find(s => s.id === ssId);
-  if (!ss || !ss.videoIds.length) return;
-  
-  playVideo(ss.videoIds[0], ss.videoIds);
+function playSubSeries(ssId,plId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss||!ss.videoIds.length)return;
+  playVideo(ss.videoIds[0],ss.videoIds);
 }
-
-async function deleteSubSeries(plId, ssId) {
-  if (!confirm('Supprimer cette saison ?')) return;
-  
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) return;
-  
-  pl.subseries = (pl.subseries || []).filter(s => s.id !== ssId);
-  await dbPutPlaylist(plId, { subseries: pl.subseries });
-  
+async function deleteSubSeries(plId,ssId){
+  if(!confirm('Supprimer cette saison ?'))return;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  pl.subseries=(pl.subseries||[]).filter(s=>s.id!==ssId);
+  await dbPutPlaylist(plId,{subseries:pl.subseries});
   showToast('🗑️ Saison supprimée');
-  showPage('pl-detail', plId);
+  showPage('pl-detail',plId);
 }
-
-function openEditSubSeries(plId, ssId) {
-  const pl = playlists.find(p => p.id === plId);
-  if (!pl) return;
-  
-  const ss = (pl.subseries || []).find(s => s.id === ssId);
-  if (!ss) return;
-  
-  currentSubPlId = plId;
-  currentSubId = ssId;
-  
-  document.getElementById('subSeriesNameIn').value = ss.name;
-  const thumb = document.getElementById('subSeriesCoverThumb');
-  thumb.innerHTML = ss.coverUrl ? `<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px">` : '📺';
-  subSeriesCoverFile = null;
-  selectedVidIds = new Set(ss.videoIds);
-  
-  document.getElementById('subSelCount').textContent = selectedVidIds.size;
+function openEditSubSeries(plId,ssId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss)return;
+  currentSubPlId=plId;currentSubId=ssId;
+  document.getElementById('subSeriesNameIn').value=ss.name;
+  const thumb=document.getElementById('subSeriesCoverThumb');
+  thumb.innerHTML=ss.coverUrl?`<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px">`:'📺';
+  subSeriesCoverFile=null;
+  selectedVidIds=new Set(ss.videoIds);
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
   renderSubVideoSel(plId);
   document.getElementById('createSubSeriesModal').classList.add('open');
-  
-  document.getElementById('saveSubSeriesBtn').onclick = saveEditSubSeries;
-  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent = 'MODIFIER LA SAISON';
+  // Change save button to update mode
+  document.getElementById('saveSubSeriesBtn').onclick=saveEditSubSeries;
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='MODIFIER LA SAISON';
 }
-
-async function saveEditSubSeries() {
-  const name = document.getElementById('subSeriesNameIn').value.trim();
-  if (!name) { showToast('❌ Donne un nom'); return; }
-  
-  const pl = playlists.find(p => p.id === currentSubPlId);
-  if (!pl) return;
-  
-  const ss = (pl.subseries || []).find(s => s.id === currentSubId);
-  if (!ss) return;
-  
-  ss.name = name;
-  ss.videoIds = [...selectedVidIds];
-  if (subSeriesCoverFile) { ss.coverUrl = URL.createObjectURL(subSeriesCoverFile); }
-  
-  await new Promise((res, rej) => {
-    const tx = db.transaction('playlists', 'readwrite');
-    const s = tx.objectStore('playlists');
-    const r = s.get(currentSubPlId);
-    r.onsuccess = () => {
-      const rec = r.result;
-      const idx = rec.subseries.findIndex(x => x.id === currentSubId);
-      if (idx >= 0) {
-        rec.subseries[idx] = {
-          id: currentSubId,
-          name,
-          videoIds: [...selectedVidIds],
-          coverBlob: subSeriesCoverFile || null
-        };
-      }
-      s.put(rec);
-      tx.oncomplete = res;
-      tx.onerror = rej;
-    };
-  });
-  
+async function saveEditSubSeries(){
+  const name=document.getElementById('subSeriesNameIn').value.trim();
+  if(!name){showToast('❌ Donne un nom');return}
+  const pl=playlists.find(p=>p.id===currentSubPlId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===currentSubId);if(!ss)return;
+  ss.name=name;ss.videoIds=[...selectedVidIds];
+  if(subSeriesCoverFile){ss.coverUrl=URL.createObjectURL(subSeriesCoverFile)}
+  await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries});
   document.getElementById('createSubSeriesModal').classList.remove('open');
-  document.getElementById('saveSubSeriesBtn').onclick = saveCreateSubSeries;
-  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent = 'NOUVELLE SAISON';
-  
+  document.getElementById('saveSubSeriesBtn').onclick=saveCreateSubSeries;
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='NOUVELLE SAISON';
   showToast('✅ Saison modifiée !');
-  showSubSeries(currentSubPlId, currentSubId);
+  showSubSeries(currentSubPlId,currentSubId);
 }
-
-function renderSeriesDetail(sid) {
-  const ser = seriesList.find(s => s.id === sid);
-  if (!ser) { showPage('main'); return; }
-  
-  const serVids = videos.filter(v => v.seriesId === sid);
-  const seasonNums = [...new Set(serVids.map(v => v.seasonNum))].filter(Boolean).sort((a, b) => a - b);
-  
-  document.getElementById('serDetailContent').innerHTML = `
+function renderSeriesDetail(sid){
+  const ser=seriesList.find(s=>s.id===sid);if(!ser){showPage('main');return}
+  const serVids=videos.filter(v=>v.seriesId===sid);
+  const seasonNums=[...new Set(serVids.map(v=>v.seasonNum))].filter(Boolean).sort((a,b)=>a-b);
+  document.getElementById('serDetailContent').innerHTML=`
     <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('main')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Retour</button></div>
       <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deleteSeries(${sid})">🗑️ Supprimer la série</button></div>
     <div class="detail-hero">
-      <div class="detail-cover">${ser.coverUrl ? `<img src="${ser.coverUrl}">` : '📺'}</div>
+      <div class="detail-cover">${ser.coverUrl?`<img src="${ser.coverUrl}">`:'📺'}</div>
       <div class="detail-info"><div class="detail-name">${ser.name}</div>
-        <div class="detail-meta">${seasonNums.length} saison${seasonNums.length !== 1 ? 's' : ''} · ${serVids.length} épisode${serVids.length !== 1 ? 's' : ''}</div>
+        <div class="detail-meta">${seasonNums.length} saison${seasonNums.length!==1?'s':''} · ${serVids.length} épisode${serVids.length!==1?'s':''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
-          ${serVids.length ? `<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire depuis le début</button>` : ''}
+          ${serVids.length?`<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire depuis le début</button>`:''}
           <button class="btn-ghost" onclick="openWizForSeason(${sid})" style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une saison</button>
         </div>
       </div>
     </div>
-    <div class="seasons-container">${seasonNums.map(num => seasonAccHTML(ser, num, serVids)).join('')}
-      ${!seasonNums.length ? `<div style="text-align:center;padding:40px;opacity:.4"><div style="font-size:40px;margin-bottom:12px">📺</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px">AUCUNE SAISON</div><div style="font-size:13px;color:var(--muted);margin-top:6px">Clique sur "Ajouter une saison" pour commencer</div></div>` : ''}
+    <div class="seasons-container">${seasonNums.map(num=>seasonAccHTML(ser,num,serVids)).join('')}
+      ${!seasonNums.length?`<div style="text-align:center;padding:40px;opacity:.4"><div style="font-size:40px;margin-bottom:12px">📺</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px">AUCUNE SAISON</div><div style="font-size:13px;color:var(--muted);margin-top:6px">Clique sur "Ajouter une saison" pour commencer</div></div>`:''}
     </div>`;
 }
-
-function seasonAccHTML(ser, sNum, serVids) {
-  const season = ser.seasons.find(s => s.num === sNum);
-  const eps = serVids.filter(v => v.seasonNum === sNum).sort((a, b) => (a.episodeNum || 0) - (b.episodeNum || 0));
-  const sName = season ? (season.name || 'Saison ' + sNum) : 'Saison ' + sNum;
-  
+function seasonAccHTML(ser,sNum,serVids){
+  const season=ser.seasons.find(s=>s.num===sNum);
+  const eps=serVids.filter(v=>v.seasonNum===sNum).sort((a,b)=>(a.episodeNum||0)-(b.episodeNum||0));
+  const sName=season?(season.name||'Saison '+sNum):'Saison '+sNum;
   return `<div class="season-acc">
     <div class="season-hdr" onclick="toggleSeason(this)">
       <div class="season-hdr-left">
-        ${season && season.coverUrl ? `<img src="${season.coverUrl}" class="season-mini-cover">` : ''}
+        ${season&&season.coverUrl?`<img src="${season.coverUrl}" class="season-mini-cover">`:''}
         <span class="season-title">${sName.toUpperCase()}</span>
         <span class="section-count">${eps.length} ép.</span>
       </div>
       <svg class="season-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div class="season-eps">${eps.map(v => epRowHTML(v)).join('')}</div>
+    <div class="season-eps">${eps.map(v=>epRowHTML(v)).join('')}</div>
   </div>`;
 }
-
-function toggleSeason(hdr) {
-  const eps = hdr.nextElementSibling;
-  const chevron = hdr.querySelector('.season-chevron');
-  const open = eps.style.display !== 'none';
-  eps.style.display = open ? 'none' : '';
-  if (chevron) chevron.style.transform = open ? 'rotate(-90deg)' : '';
+function toggleSeason(hdr){
+  const eps=hdr.nextElementSibling;
+  const chevron=hdr.querySelector('.season-chevron');
+  const open=eps.style.display!=='none';
+  eps.style.display=open?'none':'';
+  if(chevron)chevron.style.transform=open?'rotate(-90deg)':'';
 }
-
-function epRowHTML(v) {
+function epRowHTML(v){
   return `<div class="ep-row" onclick="playEpisode(${v.id})">
-    <span class="ep-num">E${String(v.episodeNum || 0).padStart(2, '0')}</span>
+    <span class="ep-num">E${String(v.episodeNum||0).padStart(2,'0')}</span>
     <div class="ep-info"><div class="ep-title">${v.name}</div><div class="ep-meta">${fmtSize(v.size)}</div></div>
     <button class="ep-action-btn" onclick="event.stopPropagation();playEpisode(${v.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
     <button class="ep-action-btn" onclick="event.stopPropagation();openCtxMenu(event,${v.id},'episode')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
   </div>`;
 }
-
-function playEpisode(id) {
-  const v = videos.find(x => x.id === id);
-  if (!v) return;
-  
-  const serVids = videos.filter(x => x.seriesId === v.seriesId).sort((a, b) => {
-    if (a.seasonNum !== b.seasonNum) return a.seasonNum - b.seasonNum;
-    return (a.episodeNum || 0) - (b.episodeNum || 0);
-  });
-  
-  const ids = serVids.map(x => x.id);
-  playVideo(id, ids);
+function playEpisode(id){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  const serVids=videos.filter(x=>x.seriesId===v.seriesId).sort((a,b)=>{if(a.seasonNum!==b.seasonNum)return a.seasonNum-b.seasonNum;return(a.episodeNum||0)-(b.episodeNum||0)});
+  const ids=serVids.map(x=>x.id);
+  playVideo(id,ids);
 }
-
-function playSeriesAll(sid) {
-  const serVids = videos.filter(v => v.seriesId === sid).sort((a, b) => {
-    if (a.seasonNum !== b.seasonNum) return a.seasonNum - b.seasonNum;
-    return (a.episodeNum || 0) - (b.episodeNum || 0);
-  });
-  
-  if (!serVids.length) return;
-  playVideo(serVids[0].id, serVids.map(v => v.id));
+function playSeriesAll(sid){
+  const serVids=videos.filter(v=>v.seriesId===sid).sort((a,b)=>{if(a.seasonNum!==b.seasonNum)return a.seasonNum-b.seasonNum;return(a.episodeNum||0)-(b.episodeNum||0)});
+  if(!serVids.length)return;playVideo(serVids[0].id,serVids.map(v=>v.id));
 }
 
 // ══ CARD HTML ══
-function cardHTML(v) {
-  const thumbEl = v.coverUrl
-    ? `<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="">`
-    : (!isAudio(v) ? `<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>` : '');
-  
+function cardHTML(v){
+  const thumbEl=v.coverUrl
+    ?`<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="">`
+    :(!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:'');
   return `<div class="video-card" onclick="playVideo(${v.id})">
-    <div class="thumb-wrap${isAudio(v) ? ' is-audio' : ''}">
-      <span class="thumb-icon">${isAudio(v) ? '🎵' : '▶'}</span>
+    <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
+      <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
       ${thumbEl}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <div class="video-info">
       <div class="video-title">${v.name}</div>
-      <div class="video-meta"><span class="video-cat">${v.category || 'Autre'}</span>${isAudio(v) ? '<span class="badge-mp3">MP3</span>' : ''}<span class="video-size">${fmtSize(v.size)}</span></div>
+      <div class="video-meta"><span class="video-cat">${v.category||'Autre'}</span>${isAudio(v)?'<span class="badge-mp3">MP3</span>':''}<span class="video-size">${fmtSize(v.size)}</span></div>
     </div>
     <div class="card-action-bar" onclick="event.stopPropagation()">
       <button class="card-menu-btn-ext" onclick="openCtxMenu(event,${v.id},'video')">
@@ -2259,18 +1627,17 @@ function cardHTML(v) {
   </div>`;
 }
 
-function seriesCardHTML(s) {
-  const epCount = videos.filter(v => v.seriesId === s.id).length;
-  
+function seriesCardHTML(s){
+  const epCount=videos.filter(v=>v.seriesId===s.id).length;
   return `<div class="video-card" onclick="showPage('series-detail',${s.id})">
     <div class="thumb-wrap">
       <span class="thumb-icon">📺</span>
-      ${s.coverUrl ? `<img src="${s.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">` : ''}
+      ${s.coverUrl?`<img src="${s.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:''}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <div class="video-info">
       <div class="video-title">${s.name}</div>
-      <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Série</span><span class="video-size">${epCount} épisode${epCount !== 1 ? 's' : ''}</span></div>
+      <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Série</span><span class="video-size">${epCount} épisode${epCount!==1?'s':''}</span></div>
     </div>
     <div class="card-action-bar" onclick="event.stopPropagation()">
       <button class="card-menu-btn-ext" onclick="openCtxMenu(event,${s.id},'series')">
@@ -2282,351 +1649,147 @@ function seriesCardHTML(s) {
 }
 
 // ══ THUMBNAILS ══
-const thumbCache = {};
-
-function generateThumb(url, time) {
-  time = time || 3;
-  if (thumbCache[url]) return Promise.resolve(thumbCache[url]);
-  
-  return new Promise(res => {
-    const tmp = document.createElement('video');
-    tmp.src = url;
-    tmp.muted = true;
-    tmp.preload = 'metadata';
-    tmp.currentTime = time;
-    
-    tmp.addEventListener('seeked', () => {
-      try {
-        const c = document.createElement('canvas');
-        c.width = 320;
-        c.height = 180;
-        c.getContext('2d').drawImage(tmp, 0, 0, 320, 180);
-        const d = c.toDataURL('image/jpeg', .7);
-        thumbCache[url] = d;
-        res(d);
-      } catch { res(null); }
-    }, { once: true });
-    
-    tmp.addEventListener('error', () => res(null), { once: true });
+const thumbCache={};
+function generateThumb(url,time){
+  time=time||3;if(thumbCache[url])return Promise.resolve(thumbCache[url]);
+  return new Promise(res=>{
+    const tmp=document.createElement('video');tmp.src=url;tmp.muted=true;tmp.preload='metadata';tmp.currentTime=time;
+    tmp.addEventListener('seeked',()=>{
+      try{const c=document.createElement('canvas');c.width=320;c.height=180;c.getContext('2d').drawImage(tmp,0,0,320,180);const d=c.toDataURL('image/jpeg',.7);thumbCache[url]=d;res(d)}catch{res(null)}
+    },{once:true});
+    tmp.addEventListener('error',()=>res(null),{once:true});
   });
 }
-
-const thumbObs = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (!entry.isIntersecting) return;
-    
-    const canvas = entry.target.querySelector('canvas[id^="canvas-"]');
-    if (!canvas) return;
-    
-    const vid_id = parseInt(canvas.id.replace('canvas-', ''));
-    const v = videos.find(x => x.id === vid_id);
-    
-    if (v && !isAudio(v) && !v.coverUrl) {
-      generateThumb(v.url).then(img => {
-        if (!img) return;
-        const ctx = canvas.getContext('2d');
-        const im = new Image();
-        im.onload = () => { ctx.drawImage(im, 0, 0, 320, 180); canvas.style.opacity = '1'; };
-        im.src = img;
-      });
+const thumbObs=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(!entry.isIntersecting)return;
+    const canvas=entry.target.querySelector('canvas[id^="canvas-"]');if(!canvas)return;
+    const vid_id=parseInt(canvas.id.replace('canvas-',''));
+    const v=videos.find(x=>x.id===vid_id);
+    if(v&&!isAudio(v)&&!v.coverUrl){
+      generateThumb(v.url).then(img=>{if(!img)return;const ctx=canvas.getContext('2d');const im=new Image();im.onload=()=>{ctx.drawImage(im,0,0,320,180);canvas.style.opacity='1'};im.src=img});
       thumbObs.unobserve(entry.target);
     }
   });
-}, { rootMargin: '100px' });
+},{rootMargin:'100px'});
 
 // ══ PLAYER ══
-const vid = document.getElementById('mainVideo');
-
-function playVideo(id, queue) {
-  const v = videos.find(x => x.id === id);
-  if (!v) return;
-  
-  if (queue) {
-    playQueue = queue;
-    playIdx = queue.indexOf(id);
+const vid=document.getElementById('mainVideo');
+function playVideo(id,queue){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  if(queue){playQueue=queue;playIdx=queue.indexOf(id)}else{playQueue=videos.map(x=>x.id);playIdx=playQueue.indexOf(id)}
+  currentId=id;cancelAnt();vid.src=v.url;vid.load();vid.play().catch(()=>{});
+  document.getElementById('playerTitle').textContent=v.name;
+  document.getElementById('playerSub').textContent=(isAudio(v)?'🎵 Audio':'🎬 Vidéo')+' · '+(v.category||'Autre')+' · '+fmtSize(v.size);
+  const pw=document.querySelector('.player-wrap');
+  if(isAudio(v)){
+    pw.style.aspectRatio='unset';pw.style.minHeight='220px';pw.style.background='linear-gradient(135deg,#0d1a2e,#1a0820)';vid.style.display='none';
+    const disk=v.coverUrl?`<img src="${v.coverUrl}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;box-shadow:0 8px 32px rgba(0,0,0,.6)">`:`<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite">🎵</div>`;
+    let ac=document.getElementById('audioCover');
+    if(!ac){ac=document.createElement('div');ac.id='audioCover';ac.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';pw.appendChild(ac)}
+    else ac.style.display='flex';
+    ac.innerHTML=disk+`<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
   } else {
-    playQueue = videos.map(x => x.id);
-    playIdx = playQueue.indexOf(id);
+    pw.style.aspectRatio='16/9';pw.style.minHeight='';pw.style.background='#000';vid.style.display='block';
+    const ac=document.getElementById('audioCover');if(ac)ac.style.display='none';
   }
-  
-  currentId = id;
-  cancelAnt();
-  vid.src = v.url;
-  vid.load();
-  vid.play().catch(() => {});
-  
-  document.getElementById('playerTitle').textContent = v.name;
-  document.getElementById('playerSub').textContent = (isAudio(v) ? '🎵 Audio' : '🎬 Vidéo') + ' · ' + (v.category || 'Autre') + ' · ' + fmtSize(v.size);
-  
-  const pw = document.querySelector('.player-wrap');
-  
-  if (isAudio(v)) {
-    pw.style.aspectRatio = 'unset';
-    pw.style.minHeight = '220px';
-    pw.style.background = 'linear-gradient(135deg,#0d1a2e,#1a0820)';
-    vid.style.display = 'none';
-    
-    const disk = v.coverUrl
-      ? `<img src="${v.coverUrl}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;box-shadow:0 8px 32px rgba(0,0,0,.6)">`
-      : `<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-size:38px;animation:spin 6s linear infinite">🎵</div>`;
-    
-    let ac = document.getElementById('audioCover');
-    if (!ac) {
-      ac = document.createElement('div');
-      ac.id = 'audioCover';
-      ac.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;width:100%';
-      pw.appendChild(ac);
-    } else {
-      ac.style.display = 'flex';
-    }
-    
-    ac.innerHTML = disk + `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;text-align:center">${v.name}</div>`;
-  } else {
-    pw.style.aspectRatio = '16/9';
-    pw.style.minHeight = '';
-    pw.style.background = '#000';
-    vid.style.display = 'block';
-    
-    const ac = document.getElementById('audioCover');
-    if (ac) ac.style.display = 'none';
-  }
-  
-  updNavBtns();
-  document.getElementById('playerModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  updNavBtns();document.getElementById('playerModal').classList.add('open');document.body.style.overflow='hidden';
 }
-
-vid.addEventListener('ended', () => {
-  if (!autoNext || playIdx >= playQueue.length - 1) { cancelAnt(); return; }
-  triggerAnt();
-});
-
-vid.addEventListener('error', () => showToast('❌ Impossible de lire ce fichier'));
-
-function triggerAnt() {
-  if (playIdx < playQueue.length - 1) showAntOverlay();
-  else cancelAnt();
+vid.addEventListener('ended',()=>{if(!autoNext||playIdx>=playQueue.length-1){cancelAnt();return}triggerAnt()});
+vid.addEventListener('error',()=>showToast('❌ Impossible de lire ce fichier'));
+function triggerAnt(){if(playIdx<playQueue.length-1)showAntOverlay();else cancelAnt()}
+function showAntOverlay(){
+  const next=videos.find(x=>x.id===playQueue[playIdx+1]);if(!next)return;
+  const o=document.getElementById('antOverlay'),p=document.getElementById('antProg');
+  document.getElementById('antTxt').textContent=`Suivant : ${next.name}`;
+  o.classList.add('show');p.style.transition='none';p.style.width='0';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{p.style.transition='width 5s linear';p.style.width='100%'}));
+  antTimer=setTimeout(()=>playNext(),5100);
 }
-
-function showAntOverlay() {
-  const next = videos.find(x => x.id === playQueue[playIdx + 1]);
-  if (!next) return;
-  
-  const o = document.getElementById('antOverlay');
-  const p = document.getElementById('antProg');
-  
-  document.getElementById('antTxt').textContent = `Suivant : ${next.name}`;
-  o.classList.add('show');
-  p.style.transition = 'none';
-  p.style.width = '0';
-  
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    p.style.transition = 'width 5s linear';
-    p.style.width = '100%';
-  }));
-  
-  antTimer = setTimeout(() => playNext(), 5100);
+function cancelAnt(){
+  clearTimeout(antTimer);antTimer=null;
+  const o=document.getElementById('antOverlay');if(o){o.classList.remove('show');const p=document.getElementById('antProg');if(p){p.style.transition='none';p.style.width='0'}}
 }
-
-function cancelAnt() {
-  clearTimeout(antTimer);
-  antTimer = null;
-  
-  const o = document.getElementById('antOverlay');
-  if (o) {
-    o.classList.remove('show');
-    const p = document.getElementById('antProg');
-    if (p) {
-      p.style.transition = 'none';
-      p.style.width = '0';
-    }
-  }
-}
-
-function playNext() {
-  if (playIdx < playQueue.length - 1) {
-    playIdx++;
-    playVideo(playQueue[playIdx], playQueue);
-  }
-}
-
-function playPrev() {
-  if (playIdx > 0) {
-    playIdx--;
-    playVideo(playQueue[playIdx], playQueue);
-  }
-}
-
-function updNavBtns() {
-  document.getElementById('prevBtn').disabled = playIdx <= 0;
-  document.getElementById('nextBtn').disabled = playIdx >= playQueue.length - 1;
-}
-
-function closePlayer() {
-  cancelAnt();
-  vid.pause();
-  vid.src = '';
-  document.getElementById('playerModal').classList.remove('open');
-  document.body.style.overflow = '';
-  currentId = null;
-}
-
-function toggleAutoNext() {
-  autoNext = !autoNext;
-  document.getElementById('antToggle').classList.toggle('on', autoNext);
-  if (!autoNext) cancelAnt();
-  showToast(autoNext ? '🔁 Lecture auto activée' : '⏹ Lecture auto désactivée');
-}
+function playNext(){if(playIdx<playQueue.length-1){playIdx++;playVideo(playQueue[playIdx],playQueue)}}
+function playPrev(){if(playIdx>0){playIdx--;playVideo(playQueue[playIdx],playQueue)}}
+function updNavBtns(){document.getElementById('prevBtn').disabled=playIdx<=0;document.getElementById('nextBtn').disabled=playIdx>=playQueue.length-1}
+function closePlayer(){cancelAnt();vid.pause();vid.src='';document.getElementById('playerModal').classList.remove('open');document.body.style.overflow='';currentId=null}
+function toggleAutoNext(){autoNext=!autoNext;document.getElementById('antToggle').classList.toggle('on',autoNext);if(!autoNext)cancelAnt();showToast(autoNext?'🔁 Lecture auto activée':'⏹ Lecture auto désactivée')}
 
 // ══ SEARCH ══
-function handleSearch(q) {
-  if (currentPage !== 'main') showPage('main');
-  
-  const ss = document.getElementById('search-section');
-  const hideIds = ['sec-films', 'sec-series', 'sec-docs', 'sec-yt', 'sec-autres', 'main-empty'];
-  
-  if (!q.trim()) {
-    ss.style.display = 'none';
-    hideIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = ''; });
+function handleSearch(q){
+  if(currentPage!=='main')showPage('main');
+  const ss=document.getElementById('search-section');
+  const hideIds=['sec-films','sec-series','sec-docs','sec-yt','sec-autres','main-empty'];
+  if(!q.trim()){
+    ss.style.display='none';
+    hideIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility=''});
     return;
   }
-  
-  hideIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = 'hidden'; });
-  
-  const r = videos.filter(v => v.name.toLowerCase().includes(q.toLowerCase()) || (v.category || '').toLowerCase().includes(q.toLowerCase()));
-  
-  document.getElementById('searchTitle').textContent = `"${q.toUpperCase()}"`;
-  document.getElementById('searchCount').textContent = r.length;
-  document.getElementById('searchGrid').innerHTML = r.length ? r.map(v => cardHTML(v)).join('') : `<div class="empty-state"><div class="icon">🔍</div><h3>AUCUN RÉSULTAT</h3><p>Aucune vidéo ne correspond à "${q}"</p></div>`;
-  
-  ss.style.display = 'block';
-  setTimeout(() => document.querySelectorAll('#searchGrid .video-card').forEach(c => thumbObs.observe(c)), 100);
+  hideIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility='hidden'});
+  const r=videos.filter(v=>v.name.toLowerCase().includes(q.toLowerCase())||(v.category||'').toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('searchTitle').textContent=`"${q.toUpperCase()}"`;
+  document.getElementById('searchCount').textContent=r.length;
+  document.getElementById('searchGrid').innerHTML=r.length?r.map(v=>cardHTML(v)).join(''):`<div class="empty-state"><div class="icon">🔍</div><h3>AUCUN RÉSULTAT</h3><p>Aucune vidéo ne correspond à "${q}"</p></div>`;
+  ss.style.display='block';
+  setTimeout(()=>document.querySelectorAll('#searchGrid .video-card').forEach(c=>thumbObs.observe(c)),100);
 }
 
 // ══ UTILS ══
-function isAudio(v) { return v.mediaType === 'audio'; }
-function cleanName(n) { return n.replace(/\.[^/.]+$/, '').replace(/[_\-.]/g, ' ').replace(/\s+/g, ' ').trim(); }
-function fmtSize(b) {
-  if (b > 1e9) return (b / 1e9).toFixed(1) + ' Go';
-  if (b > 1e6) return (b / 1e6).toFixed(0) + ' Mo';
-  return (b / 1e3).toFixed(0) + ' Ko';
-}
-function showToast(m) {
-  const t = document.getElementById('toast');
-  t.textContent = m;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
-}
+function isAudio(v){return v.mediaType==='audio'}
+function cleanName(n){return n.replace(/\.[^/.]+$/,'').replace(/[_\-.]/g,' ').replace(/\s+/g,' ').trim()}
+function fmtSize(b){if(b>1e9)return(b/1e9).toFixed(1)+' Go';if(b>1e6)return(b/1e6).toFixed(0)+' Mo';return(b/1e3).toFixed(0)+' Ko'}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
 
 // ══ EVENTS ══
-window.addEventListener('offline', () => document.getElementById('offlineBadge').classList.add('show'));
-window.addEventListener('online', () => document.getElementById('offlineBadge').classList.remove('show'));
-if (!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closePlayer(); document.getElementById('ctxMenu').style.display = 'none'; }
-  if (e.key === 'ArrowRight' && currentId !== null) playNext();
-  if (e.key === 'ArrowLeft' && currentId !== null) playPrev();
-  if (e.key === ' ' && currentId !== null) { e.preventDefault(); vid.paused ? vid.play() : vid.pause(); }
+window.addEventListener('offline',()=>document.getElementById('offlineBadge').classList.add('show'));
+window.addEventListener('online',()=>document.getElementById('offlineBadge').classList.remove('show'));
+if(!navigator.onLine)document.getElementById('offlineBadge').classList.add('show');
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closePlayer();document.getElementById('ctxMenu').style.display='none'}
+  if(e.key==='ArrowRight'&&currentId!==null)playNext();
+  if(e.key==='ArrowLeft'&&currentId!==null)playPrev();
+  if(e.key===' '&&currentId!==null){e.preventDefault();vid.paused?vid.play():vid.pause()}
 });
-
-document.getElementById('playerModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePlayer(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopHeroTimer(); else startHeroTimer(); });
+document.getElementById('playerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePlayer()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopHeroTimer();else startHeroTimer()});
 
 // ══ SERVICE WORKER ══
-if ('serviceWorker' in navigator) {
-  const sw = `const C='sf3';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(c=>{if(c)return c;return fetch(e.request).then(r=>{if(r&&r.status===200&&r.type==='basic'){const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}return r}).catch(()=>c)}))});`;
-  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], { type: 'application/javascript' })), { scope: '/' }).catch(() => {});
+if('serviceWorker' in navigator){
+  const sw=`const C='sf3';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(c=>{if(c)return c;return fetch(e.request).then(r=>{if(r&&r.status===200&&r.type==='basic'){const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}return r}).catch(()=>c)}))});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'})),{scope:'/'}).catch(()=>{});
 }
-
-(function() {
-  const sz = 512;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = sz;
-  const c = cv.getContext('2d');
-  
-  c.fillStyle = '#0a0a0a';
-  c.fillRect(0, 0, sz, sz);
-  
-  const cx = sz / 2, cy = sz / 2 + 10, fh = 420;
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  
-  function ds(ox, oy, color, alpha) {
-    c.save();
-    c.globalAlpha = alpha || 1;
-    c.fillStyle = color;
-    c.font = 'bold ' + fh + 'px "Arial Black",Arial,sans-serif';
-    c.fillText('S', cx + ox, cy + oy);
-    c.restore();
-  }
-  
-  ds(8, 8, '#180000');
-  ds(6, 6, '#280000');
-  ds(4, 4, '#3a0000');
-  ds(2, 2, '#500000');
-  ds(0, 0, '#e50914');
-  
-  c.save();
-  c.font = 'bold ' + fh + 'px "Arial Black",Arial,sans-serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  
-  const g1 = c.createLinearGradient(cx - 150, cy - 200, cx + 80, cy + 200);
-  g1.addColorStop(0, 'rgba(255,255,255,0)');
-  g1.addColorStop(0.38, 'rgba(255,255,255,0)');
-  g1.addColorStop(0.46, 'rgba(255,120,120,0.5)');
-  g1.addColorStop(0.5, 'rgba(255,200,200,0.75)');
-  g1.addColorStop(0.54, 'rgba(255,120,120,0.5)');
-  g1.addColorStop(0.62, 'rgba(255,255,255,0)');
-  g1.addColorStop(1, 'rgba(255,255,255,0)');
-  c.fillStyle = g1;
-  c.fillText('S', cx, cy);
-  
-  const g2 = c.createLinearGradient(cx - 100, cy - 200, cx + 60, cy + 200);
-  g2.addColorStop(0, 'rgba(255,255,255,0)');
-  g2.addColorStop(0.44, 'rgba(255,255,255,0)');
-  g2.addColorStop(0.49, 'rgba(255,240,240,0.85)');
-  g2.addColorStop(0.5, 'rgba(255,255,255,1)');
-  g2.addColorStop(0.51, 'rgba(255,240,240,0.85)');
-  g2.addColorStop(0.56, 'rgba(255,255,255,0)');
-  g2.addColorStop(1, 'rgba(255,255,255,0)');
-  c.globalAlpha = 0.55;
-  c.fillStyle = g2;
-  c.fillText('S', cx, cy);
+(function(){
+  const sz=512;const cv=document.createElement('canvas');cv.width=cv.height=sz;const c=cv.getContext('2d');
+  c.fillStyle='#0a0a0a';c.fillRect(0,0,sz,sz);
+  const cx=sz/2,cy=sz/2+10,fh=420;
+  c.textAlign='center';c.textBaseline='middle';
+  function ds(ox,oy,color,alpha){c.save();c.globalAlpha=alpha||1;c.fillStyle=color;c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.fillText('S',cx+ox,cy+oy);c.restore();}
+  ds(8,8,'#180000');ds(6,6,'#280000');ds(4,4,'#3a0000');ds(2,2,'#500000');
+  ds(0,0,'#e50914');
+  c.save();c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  const g1=c.createLinearGradient(cx-150,cy-200,cx+80,cy+200);
+  g1.addColorStop(0,'rgba(255,255,255,0)');g1.addColorStop(0.38,'rgba(255,255,255,0)');
+  g1.addColorStop(0.46,'rgba(255,120,120,0.5)');g1.addColorStop(0.5,'rgba(255,200,200,0.75)');
+  g1.addColorStop(0.54,'rgba(255,120,120,0.5)');g1.addColorStop(0.62,'rgba(255,255,255,0)');
+  g1.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=g1;c.fillText('S',cx,cy);
+  const g2=c.createLinearGradient(cx-100,cy-200,cx+60,cy+200);
+  g2.addColorStop(0,'rgba(255,255,255,0)');g2.addColorStop(0.44,'rgba(255,255,255,0)');
+  g2.addColorStop(0.49,'rgba(255,240,240,0.85)');g2.addColorStop(0.5,'rgba(255,255,255,1)');
+  g2.addColorStop(0.51,'rgba(255,240,240,0.85)');g2.addColorStop(0.56,'rgba(255,255,255,0)');
+  g2.addColorStop(1,'rgba(255,255,255,0)');
+  c.globalAlpha=0.55;c.fillStyle=g2;c.fillText('S',cx,cy);
   c.restore();
-  
-  const url = cv.toDataURL('image/png');
-  
-  const mf = {
-    name: 'SHARKFLIX',
-    short_name: 'SHARKFLIX',
-    start_url: location.href,
-    display: 'standalone',
-    background_color: '#0a0a0a',
-    theme_color: '#080810',
-    icons: [
-      { src: url, sizes: '512x512', type: 'image/png' },
-      { src: url, sizes: '192x192', type: 'image/png' },
-      { src: url, sizes: 'any', type: 'image/png' }
-    ]
-  };
-  
-  document.getElementById('manifestLink').href = URL.createObjectURL(new Blob([JSON.stringify(mf)], { type: 'application/manifest+json' }));
-  
-  const li = document.createElement('link');
-  li.rel = 'icon';
-  li.href = url;
-  document.head.appendChild(li);
-  
-  const al = document.createElement('link');
-  al.rel = 'apple-touch-icon';
-  al.href = url;
-  document.head.appendChild(al);
+  const url=cv.toDataURL('image/png');
+  const mf={name:'SHARKFLIX',short_name:'SHARKFLIX',start_url:location.href,display:'standalone',background_color:'#0a0a0a',theme_color:'#080810',icons:[{src:url,sizes:'512x512',type:'image/png'},{src:url,sizes:'192x192',type:'image/png'},{src:url,sizes:'any',type:'image/png'}]};
+  document.getElementById('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'}));
+  const li=document.createElement('link');li.rel='icon';li.href=url;document.head.appendChild(li);
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=url;document.head.appendChild(al);
 })();
 
 // ══ INIT ══
-initDB().then(() => loadFromDB()).catch(e => { console.error('DB:', e); render(); });
+initDB().then(()=>loadFromDB()).catch(e=>{console.error('DB:',e);render()});
 </script>
 </body>
 </html>
