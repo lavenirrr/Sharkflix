@@ -619,7 +619,7 @@ let ctxTargetId=null,ctxTargetType='video',editCoverFile=null;
 let db;
 function initDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('sharkflix',5);
+    const req=indexedDB.open('sharkflix',4);
     req.onupgradeneeded=e=>{
       const d=e.target.result;
       if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
