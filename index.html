@@ -670,11 +670,18 @@ const dbDelPl=(id)=>dbOp('playlists','readwrite',s=>s.delete(id));
 // ══ LOAD ══
 async function loadFromDB(){
   const [rows,serRows,plRows]=await Promise.all([dbGetAll(),dbGetAllSeries(),dbGetAllPl()]);
-  videos=rows.reverse().map(r=>({
-    id:r.id,name:r.name,category:r.category,size:r.size,mediaType:r.mediaType||'video',
-    url:URL.createObjectURL(r.blob),coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,
-    seriesId:r.seriesId||null,seasonNum:r.seasonNum||null,episodeNum:r.episodeNum||null
-  }));
+  videos=rows.reverse().reduce((acc,r)=>{
+    if(!r.blob||!(r.blob instanceof Blob)||r.blob.size===0){
+      dbDel(r.id).catch(()=>{});return acc;
+    }
+    try{
+      acc.push({id:r.id,name:r.name,category:r.category,size:r.size,mediaType:r.mediaType||'video',
+        url:URL.createObjectURL(r.blob),
+        coverUrl:r.coverBlob&&r.coverBlob instanceof Blob&&r.coverBlob.size>0?URL.createObjectURL(r.coverBlob):null,
+        seriesId:r.seriesId||null,seasonNum:r.seasonNum||null,episodeNum:r.episodeNum||null});
+    }catch(err){console.warn('Video entry skipped:',r.id,err);dbDel(r.id).catch(()=>{})}
+    return acc;
+  },[]);
   seriesList=serRows.reverse().map(r=>({
     id:r.id,name:r.name,
     coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,
@@ -775,11 +782,18 @@ function proceedAdd(){
 }
 async function addVideo(f,category,coverFile){
   const mediaType=f.type.startsWith('audio/')?'audio':'video';
-  // f.blob est déjà un Blob stable cloné depuis le File original
-  const coverBlob=coverFile?coverFile.slice(0,coverFile.size,coverFile.type):null;
-  const record={name:cleanName(f.name),category,size:f.size,mediaType,blob:f.blob,coverBlob:coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
+  // Lire le fichier en ArrayBuffer puis reconvertir en Blob garantit
+  // une sérialisation fiable dans IndexedDB (évite les bugs de File→DB→reload)
+  const arrayBuf=await f.blob.arrayBuffer();
+  const stableBlob=new Blob([arrayBuf],{type:f.type||'video/mp4'});
+  let coverBlob=null;
+  if(coverFile){
+    const cbuf=await coverFile.arrayBuffer();
+    coverBlob=new Blob([cbuf],{type:coverFile.type||'image/jpeg'});
+  }
+  const record={name:cleanName(f.name),category,size:f.size,mediaType,blob:stableBlob,coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
   const id=await dbAdd(record);
-  videos.unshift({id,name:record.name,category,size:f.size,mediaType,url:URL.createObjectURL(f.blob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
+  videos.unshift({id,name:record.name,category,size:f.size,mediaType,url:URL.createObjectURL(stableBlob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
 }
 
 // ═══ SERIES WIZARD ═══
