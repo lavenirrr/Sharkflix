@@ -1318,8 +1318,8 @@ function playSeriesAll(sid){
 // ══ CARD HTML ══
 function cardHTML(v){
   const thumbEl=v.coverUrl?`<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="">`:(!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:'');
-  return `<div class="video-card" onclick="playVideo(${v.id})">
-    <div class="thumb-wrap${isAudio(v)?' is-audio':''}"><span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>${thumbEl}
+  return `<div class="video-card">
+    <div class="thumb-wrap${isAudio(v)?' is-audio':''}" onclick="playVideo(${v.id})" style="cursor:pointer"><span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>${thumbEl}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
     <div class="video-info">
