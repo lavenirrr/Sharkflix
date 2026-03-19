@@ -719,9 +719,24 @@ function openWiz(){
 }
 function closeWiz(){
   document.getElementById('wizModal').classList.remove('open');
+  if(wizFromSeriesPage!==null){const sid=wizFromSeriesPage;wizFromSeriesPage=null;renderSeriesDetail(sid);return;}
   catQueueIdx++;
   setTimeout(()=>nextCatPick(),80);
 }
+// Ouvre le wizard directement à l'étape 2 (saison) pour une série existante, sans fichier en attente
+function openWizForSeason(sid){
+  wizStep=1;wizSeriesId=sid;wizSeasonNum=null;wizIncludeAll=false;
+  wizNewSeriesCoverFile=null;wizNewSeasonCoverFile=null;wizEpTitles=[];
+  document.getElementById('wizSeasonNumIn').value='1';
+  document.getElementById('wizSeasonNameIn').value='';
+  document.getElementById('wizSeasonCoverPrev').innerHTML='📺';
+  // Flag: pas de fichier en attente, on revient à la page série après
+  wizFromSeriesPage=sid;
+  catQueue=[];catQueueIdx=0;
+  renderWizStep(2);
+  document.getElementById('wizModal').classList.add('open');
+}
+let wizFromSeriesPage=null;
 function renderWizStep(step){
   wizStep=step;
   [1,2,3].forEach(s=>{
@@ -828,10 +843,35 @@ async function wizNext(){
       const ser=seriesList.find(s=>s.id===wizSeriesId);
       if(ser&&ser.seasons.some(s=>s.num===num)){showToast('❌ Cette saison existe déjà');return}
     }
+    // Mode "ajouter une saison" sans fichiers : on crée juste la saison
+    if(wizFromSeriesPage!==null&&!catQueue.length){
+      await doWizCreateSeasonOnly();return;
+    }
     renderWizStep(3);
   } else {
     await doWizImport();
   }
+}
+async function doWizCreateSeasonOnly(){
+  const sid=wizSeriesId||wizFromSeriesPage;
+  const snum=wizSeasonNum||(parseInt(document.getElementById('wizSeasonNumIn').value)||1);
+  const sname=document.getElementById('wizSeasonNameIn').value.trim()||`Saison ${snum}`;
+  const coverFile=wizNewSeasonCoverFile;
+  const coverUrl=coverFile?URL.createObjectURL(coverFile):null;
+  const ser=seriesList.find(s=>s.id===sid);
+  if(ser){
+    ser.seasons.push({num:snum,name:sname,coverUrl});
+    ser.seasons.sort((a,b)=>a.num-b.num);
+  }
+  await new Promise((res,rej)=>{
+    const tx=db.transaction('series','readwrite'),store=tx.objectStore('series'),r=store.get(sid);
+    r.onsuccess=()=>{const rec=r.result;rec.seasons=rec.seasons||[];rec.seasons.push({num:snum,name:sname,coverBlob:coverFile||null});rec.seasons.sort((a,b)=>a.num-b.num);store.put(rec);tx.oncomplete=res;tx.onerror=rej};
+  });
+  document.getElementById('wizModal').classList.remove('open');
+  showToast(`✅ ${sname} créée !`);
+  const returnSid=wizFromSeriesPage;wizFromSeriesPage=null;
+  render();
+  renderSeriesDetail(returnSid||sid);
 }
 async function doWizImport(){
   let sid=wizSeriesId;
@@ -873,6 +913,7 @@ async function doWizImport(){
   const n=files.length;
   showToast(`✅ ${n} épisode${n>1?'s':''} importé${n>1?'s':''} !`);
   render();
+  if(wizFromSeriesPage!==null){const rsid=wizFromSeriesPage;wizFromSeriesPage=null;renderSeriesDetail(rsid);return;}
   setTimeout(()=>nextCatPick(),80);
 }
 
@@ -1189,10 +1230,15 @@ function renderSeriesDetail(sid){
       <div class="detail-cover">${ser.coverUrl?`<img src="${ser.coverUrl}">`:'📺'}</div>
       <div class="detail-info"><div class="detail-name">${ser.name}</div>
         <div class="detail-meta">${seasonNums.length} saison${seasonNums.length!==1?'s':''} · ${serVids.length} épisode${serVids.length!==1?'s':''}</div>
-        ${serVids.length?`<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire depuis le début</button>`:''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+          ${serVids.length?`<button class="btn-play" onclick="playSeriesAll(${sid})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire depuis le début</button>`:''}
+          <button class="btn-ghost" onclick="openWizForSeason(${sid})" style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une saison</button>
+        </div>
       </div>
     </div>
-    <div class="seasons-container">${seasonNums.map(num=>seasonAccHTML(ser,num,serVids)).join('')}</div>`;
+    <div class="seasons-container">${seasonNums.map(num=>seasonAccHTML(ser,num,serVids)).join('')}
+      ${!seasonNums.length?`<div style="text-align:center;padding:40px;opacity:.4"><div style="font-size:40px;margin-bottom:12px">📺</div><div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px">AUCUNE SAISON</div><div style="font-size:13px;color:var(--muted);margin-top:6px">Clique sur "Ajouter une saison" pour commencer</div></div>`:''}
+    </div>`;
 }
 function seasonAccHTML(ser,sNum,serVids){
   const season=ser.seasons.find(s=>s.num===sNum);
