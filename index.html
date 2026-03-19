@@ -1122,11 +1122,15 @@ function renderSections(){
     if(vids.length){el.style.display='';document.getElementById(grd).innerHTML=vids.map(v=>cardHTML(v)).join('');document.getElementById(cnt).textContent=vids.length}
     else el.style.display='none';
   });
-  // Series section
-  const activeSeries=seriesList.filter(s=>videos.some(v=>v.seriesId===s.id));
-  const sec=document.getElementById('sec-series');
-  if(activeSeries.length){sec.style.display='';document.getElementById('grd-series').innerHTML=activeSeries.map(s=>seriesCardHTML(s)).join('');document.getElementById('cnt-series').textContent=activeSeries.length}
-  else sec.style.display='none';
+  // Series section - same pattern as films
+  const seriesVids=videos.filter(v=>v.category==='Séries');
+  const secSeries=document.getElementById('sec-series');
+  if(seriesVids.length){
+    secSeries.style.display='';
+    document.getElementById('grd-series').innerHTML=seriesVids.map(v=>cardHTML(v)).join('');
+    document.getElementById('cnt-series').textContent=seriesVids.length;
+    setTimeout(()=>document.querySelectorAll('#grd-series .video-card').forEach(c=>thumbObs.observe(c)),100);
+  } else secSeries.style.display='none';
   // Other cats
   const otherCats=[...new Set(videos.map(v=>v.category).filter(c=>c&&!FIXED_CATS.includes(c)))];
   document.getElementById('sec-autres').innerHTML=otherCats.map(cat=>{
