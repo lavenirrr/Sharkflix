@@ -59,9 +59,9 @@ main{padding:0 0 100px}
 .section-count{font-size:12px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 8px}
 /* GRIDS */
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:0 24px}
-.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative}
+.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);cursor:pointer;transition:.2s;position:relative}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
-.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:var(--card-radius) var(--card-radius) 0 0}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
 .video-card:hover .video-overlay{background:rgba(0,0,0,.4)}
@@ -310,12 +310,12 @@ main{padding:0 0 100px}
 </div>
 
 <!-- FILE INPUTS -->
-<input type="file" id="fileInput" accept="video/*,audio/*" multiple>
-<input type="file" id="coverInput" accept="image/*">
-<input type="file" id="plCoverInput" accept="image/*">
-<input type="file" id="editCoverInput" accept="image/*">
-<input type="file" id="wizSeriesCoverInput" accept="image/*">
-<input type="file" id="wizSeasonCoverInput" accept="image/*">
+<input type="file" id="fileInput" accept="video/*,audio/*" multiple style="display:none">
+<input type="file" id="coverInput" accept="image/*" style="display:none">
+<input type="file" id="plCoverInput" accept="image/*" style="display:none">
+<input type="file" id="editCoverInput" accept="image/*" style="display:none">
+<input type="file" id="wizSeriesCoverInput" accept="image/*" style="display:none">
+<input type="file" id="wizSeasonCoverInput" accept="image/*" style="display:none">
 
 <!-- ████ PAGE MAIN ████ -->
 <div id="page-main">
