@@ -63,9 +63,9 @@ main{padding:0 0 100px}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
-.video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2}
+.video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
 .video-card:hover .video-overlay{background:rgba(0,0,0,.4)}
-.play-btn{width:52px;height:52px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.8);transition:.2s}
+.play-btn{width:52px;height:52px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.8);transition:.2s;pointer-events:all}
 .play-btn svg{margin-left:3px}
 .video-card:hover .play-btn{opacity:1;transform:scale(1)}
 .video-info{padding:10px 12px}
@@ -76,9 +76,9 @@ main{padding:0 0 100px}
 .thumb-wrap.is-audio{background:linear-gradient(135deg,#0d1a2e,#1a0820)}
 .badge-mp3{font-size:10px;color:#22d3ee;background:rgba(34,211,238,.1);border-radius:3px;padding:2px 6px;border:1px solid rgba(34,211,238,.2)}
 /* 3-DOT MENU BUTTON */
-.card-menu-btn{position:absolute;top:8px;right:8px;opacity:0;transition:.2s;z-index:5;background:rgba(0,0,0,.75);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center}
+.card-menu-btn{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s;z-index:20;background:rgba(0,0,0,.82);border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;pointer-events:all;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .video-card:hover .card-menu-btn,.pl-card:hover .card-menu-btn{opacity:1}
-@media(max-width:768px){.card-menu-btn{opacity:1}}
+@media(max-width:900px){.card-menu-btn{opacity:1;width:38px;height:38px}}
 /* CONTEXT MENU */
 .ctx-menu{position:fixed;background:var(--bg2);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:4px;z-index:500;min-width:190px;box-shadow:0 8px 32px rgba(0,0,0,.7);display:none}
 .ctx-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);background:none;border:none;width:100%;font-family:'DM Sans',sans-serif;transition:.12s;text-align:left}
@@ -326,7 +326,7 @@ main{padding:0 0 100px}
     <div class="hero-dots" id="heroDots"></div>
   </section>
   <main>
-    <div id="search-section">
+    <div id="search-section" style="display:none">
       <div class="section-header"><span class="section-title" id="searchTitle">RÉSULTATS</span><span class="section-count" id="searchCount">0</span></div>
       <div class="video-grid" id="searchGrid"></div>
     </div>
@@ -1230,7 +1230,7 @@ function cardHTML(v){
     <div class="thumb-wrap${isAudio(v)?' is-audio':''}"><span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>${thumbEl}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
-    <button class="card-menu-btn" onclick="openCtxMenu(event,${v.id},'video')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+    <button class="card-menu-btn" onclick="event.stopPropagation();openCtxMenu(event,${v.id},'video')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
     <div class="video-info"><div class="video-title">${v.name}</div>
       <div class="video-meta"><span class="video-cat">${v.category||'Autre'}</span>${isAudio(v)?'<span class="badge-mp3">MP3</span>':''}<span class="video-size">${fmtSize(v.size)}</span></div>
     </div>
@@ -1243,7 +1243,7 @@ function seriesCardHTML(s){
       ${s.coverUrl?`<img src="${s.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:''}
       <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
     </div>
-    <button class="card-menu-btn" onclick="openCtxMenu(event,${s.id},'series')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+    <button class="card-menu-btn" onclick="event.stopPropagation();openCtxMenu(event,${s.id},'series')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
     <div class="video-info"><div class="video-title">${s.name}</div>
       <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Série</span><span class="video-size">${epCount} épisode${epCount!==1?'s':''}</span></div>
     </div>
@@ -1323,13 +1323,17 @@ function handleSearch(q){
   if(currentPage!=='main')showPage('main');
   const ss=document.getElementById('search-section');
   const hideIds=['sec-films','sec-series','sec-docs','sec-yt','sec-autres','main-empty'];
-  if(!q.trim()){ss.classList.remove('visible');hideIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility=''});return}
+  if(!q.trim()){
+    ss.style.display='none';
+    hideIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility=''});
+    return;
+  }
   hideIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility='hidden'});
   const r=videos.filter(v=>v.name.toLowerCase().includes(q.toLowerCase())||(v.category||'').toLowerCase().includes(q.toLowerCase()));
   document.getElementById('searchTitle').textContent=`"${q.toUpperCase()}"`;
   document.getElementById('searchCount').textContent=r.length;
   document.getElementById('searchGrid').innerHTML=r.length?r.map(v=>cardHTML(v)).join(''):`<div class="empty-state"><div class="icon">🔍</div><h3>AUCUN RÉSULTAT</h3><p>Aucune vidéo ne correspond à "${q}"</p></div>`;
-  ss.classList.add('visible');
+  ss.style.display='block';
   setTimeout(()=>document.querySelectorAll('#searchGrid .video-card').forEach(c=>thumbObs.observe(c)),100);
 }
 
@@ -1358,7 +1362,41 @@ if('serviceWorker' in navigator){
   const sw=`const C='sf3';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(c=>{if(c)return c;return fetch(e.request).then(r=>{if(r&&r.status===200&&r.type==='basic'){const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}return r}).catch(()=>c)}))});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'})),{scope:'/'}).catch(()=>{});
 }
-document.getElementById('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify({name:'SHARKFLIX',short_name:'SHARKFLIX',start_url:location.href,display:'standalone',background_color:'#080810',theme_color:'#080810',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23080810" rx="20"/><text y=".9em" font-size="80" x="10">🦈</text></svg>',sizes:'any',type:'image/svg+xml'}]})],{type:'application/manifest+json'}));
+(function(){
+  const sz=512;const cv=document.createElement('canvas');cv.width=cv.height=sz;const c=cv.getContext('2d');
+  // Black background
+  c.fillStyle='#0a0a0a';c.fillRect(0,0,sz,sz);
+  const cx=sz/2,cy=sz/2+10,fh=420;
+  c.textAlign='center';c.textBaseline='middle';
+  // Helper to draw S
+  function ds(ox,oy,color,alpha){c.save();c.globalAlpha=alpha||1;c.fillStyle=color;c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.fillText('S',cx+ox,cy+oy);c.restore();}
+  // Depth shadow layers (right+down shift = 3D depth like Netflix)
+  ds(8,8,'#180000');ds(6,6,'#280000');ds(4,4,'#3a0000');ds(2,2,'#500000');
+  // Main red
+  ds(0,0,'#e50914');
+  // Clip to S shape for highlight overlays
+  c.save();c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  // Diagonal gloss stripe
+  const g1=c.createLinearGradient(cx-150,cy-200,cx+80,cy+200);
+  g1.addColorStop(0,'rgba(255,255,255,0)');g1.addColorStop(0.38,'rgba(255,255,255,0)');
+  g1.addColorStop(0.46,'rgba(255,120,120,0.5)');g1.addColorStop(0.5,'rgba(255,200,200,0.75)');
+  g1.addColorStop(0.54,'rgba(255,120,120,0.5)');g1.addColorStop(0.62,'rgba(255,255,255,0)');
+  g1.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=g1;c.fillText('S',cx,cy);
+  // Thin bright glint
+  const g2=c.createLinearGradient(cx-100,cy-200,cx+60,cy+200);
+  g2.addColorStop(0,'rgba(255,255,255,0)');g2.addColorStop(0.44,'rgba(255,255,255,0)');
+  g2.addColorStop(0.49,'rgba(255,240,240,0.85)');g2.addColorStop(0.5,'rgba(255,255,255,1)');
+  g2.addColorStop(0.51,'rgba(255,240,240,0.85)');g2.addColorStop(0.56,'rgba(255,255,255,0)');
+  g2.addColorStop(1,'rgba(255,255,255,0)');
+  c.globalAlpha=0.55;c.fillStyle=g2;c.fillText('S',cx,cy);
+  c.restore();
+  const url=cv.toDataURL('image/png');
+  const mf={name:'SHARKFLIX',short_name:'SHARKFLIX',start_url:location.href,display:'standalone',background_color:'#0a0a0a',theme_color:'#080810',icons:[{src:url,sizes:'512x512',type:'image/png'},{src:url,sizes:'192x192',type:'image/png'},{src:url,sizes:'any',type:'image/png'}]};
+  document.getElementById('manifestLink').href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'}));
+  const li=document.createElement('link');li.rel='icon';li.href=url;document.head.appendChild(li);
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=url;document.head.appendChild(al);
+})();
 
 // ══ INIT ══
 initDB().then(()=>loadFromDB()).catch(e=>{console.error('DB:',e);render()});
