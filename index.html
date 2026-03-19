@@ -569,7 +569,7 @@ main{padding:0 0 100px}
 <!-- CREATE SUB-SERIES MODAL -->
 <div class="big-modal" id="createSubSeriesModal">
   <div class="big-box">
-    <div class="big-hdr"><h2>NOUVELLE SOUS-SÉRIE</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createSubSeriesModal').classList.remove('open')">✕</button></div>
+    <div class="big-hdr"><h2>NOUVELLE SAISON</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createSubSeriesModal').classList.remove('open')">✕</button></div>
     <div class="big-body">
       <div class="field-lbl">Nom</div>
       <input type="text" class="field-in" id="subSeriesNameIn" placeholder="Ex : Saison 1, Partie 2...">
@@ -720,9 +720,11 @@ function chooseType(type){
 
 function nextCatPick(){
   if(catQueueIdx>=catQueue.length){
-    const n=catQueue.length;render();
-    showToast(`✅ ${n} fichier${n>1?'s':''} sauvegardé${n>1?'s':''} !`);
-    catQueue=[];pendingCat=null;pendingCover=null;return;
+    const n=catQueue.length;
+    render();
+    if(n>0) showToast(`✅ ${n} fichier${n>1?'s':''} sauvegardé${n>1?'s':''} !`);
+    catQueue=[];pendingCat=null;pendingCover=null;
+    return;
   }
   const f=catQueue[catQueueIdx];
   document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
@@ -753,7 +755,7 @@ document.getElementById('coverInput').addEventListener('change',function(e){
 });
 function confirmCover(){document.getElementById('coverModal').classList.remove('open');proceedAdd()}
 function skipCover(){pendingCover=null;document.getElementById('coverModal').classList.remove('open');proceedAdd()}
-function proceedAdd(){const f=catQueue[catQueueIdx];catQueueIdx++;addVideo(f,pendingCat,pendingCover).then(()=>setTimeout(nextCatPick,80))}
+function proceedAdd(){const f=catQueue[catQueueIdx];catQueueIdx++;addVideo(f,pendingCat,pendingCover).then(()=>{render();setTimeout(nextCatPick,80)})}
 async function addVideo(file,category,coverFile){
   const mediaType=file.type.startsWith('audio/')?'audio':'video';
   const record={name:cleanName(file.name),category,size:file.size,mediaType,blob:file,coverBlob:coverFile||null,seriesId:null,seasonNum:null,episodeNum:null};
@@ -775,19 +777,28 @@ function openWiz(){
 }
 function closeWiz(){
   document.getElementById('wizModal').classList.remove('open');
-  if(wizFromSeriesPage!==null){const sid=wizFromSeriesPage;wizFromSeriesPage=null;renderSeriesDetail(sid);return;}
-  catQueueIdx++;
-  setTimeout(()=>nextCatPick(),80);
+  if(wizFromSeriesPage!==null){
+    const sid=wizFromSeriesPage;wizFromSeriesPage=null;
+    renderSeriesDetail(sid);return;
+  }
+  // Seulement si on était dans un vrai flux d'import
+  if(catQueue.length>0){
+    catQueueIdx++;
+    setTimeout(()=>nextCatPick(),80);
+  }
 }
 // Ouvre le wizard directement à l'étape 2 (saison) pour une série existante, sans fichier en attente
 function openWizForSeason(sid){
+  // Ne touche PAS à catQueue — on sauvegarde/restaure si besoin
+  const savedQueue=catQueue.slice();
+  const savedIdx=catQueueIdx;
   wizStep=1;wizSeriesId=sid;wizSeasonNum=null;wizIncludeAll=false;
   wizNewSeriesCoverFile=null;wizNewSeasonCoverFile=null;wizEpTitles=[];
   document.getElementById('wizSeasonNumIn').value='1';
   document.getElementById('wizSeasonNameIn').value='';
   document.getElementById('wizSeasonCoverPrev').innerHTML='📺';
-  // Flag: pas de fichier en attente, on revient à la page série après
   wizFromSeriesPage=sid;
+  // File queue vide pour ce mode
   catQueue=[];catQueueIdx=0;
   renderWizStep(2);
   document.getElementById('wizModal').classList.add('open');
@@ -1290,7 +1301,7 @@ function renderPlDetail(plId){
       </div>
       <div class="video-info">
         <div class="video-title">${ss.name}</div>
-        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Sous-série</span><span class="video-size">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</span></div>
+        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Saison</span><span class="video-size">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</span></div>
       </div>
       <div class="card-action-bar" onclick="event.stopPropagation()">
         <button class="card-menu-btn-ext" onclick="openCtxMenu(event,'${ss.id}','subseries',${pl.id})">
@@ -1310,11 +1321,11 @@ function renderPlDetail(plId){
       <div class="detail-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}</div>
       <div class="detail-info">
         <div class="detail-name">${pl.name}</div>
-        <div class="detail-meta">${subs.length} sous-série${subs.length!==1?'s':''} · ${plVids.length} vidéo${plVids.length!==1?'s':''}</div>
+        <div class="detail-meta">${subs.length} saison${subs.length!==1?'s':''} · ${plVids.length} vidéo${plVids.length!==1?'s':''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
           ${plVids.length?`<button class="btn-play" onclick="playPl(${pl.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
           <button class="btn-ghost" onclick="openCreateSubSeries(${pl.id})" style="display:flex;align-items:center;gap:7px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nouvelle sous-série
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nouvelle saison
           </button>
           <button class="btn-ghost" onclick="openAddVideosToPl(${pl.id})" style="display:flex;align-items:center;gap:7px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter des vidéos
@@ -1322,9 +1333,9 @@ function renderPlDetail(plId){
         </div>
       </div>
     </div>
-    ${subs.length?`<div class="section"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:#a855f7"></div><span class="section-title">SOUS-SÉRIES</span></div><span class="section-count">${subs.length}</span></div><div class="video-grid">${subCardsHTML}</div></div>`:''}
+    ${subs.length?`<div class="section"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:#a855f7"></div><span class="section-title">SAISONS</span></div><span class="section-count">${subs.length}</span></div><div class="video-grid">${subCardsHTML}</div></div>`:''}
     ${freeVids.length?`<div class="section" style="margin-top:24px"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:var(--red)"></div><span class="section-title">VIDÉOS</span></div><span class="section-count">${freeVids.length}</span></div><div class="video-grid" id="plDetailGrid">${freeVids.map(v=>cardHTML(v)).join('')}</div></div>`:''}
-    ${!subs.length&&!freeVids.length?`<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3><p>Crée une sous-série ou ajoute des vidéos</p></div>`:''}`;
+    ${!subs.length&&!freeVids.length?`<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3><p>Crée une saison ou ajoute des vidéos</p></div>`:''}`;
   setTimeout(()=>document.querySelectorAll('#plDetailContent .video-card').forEach(c=>thumbObs.observe(c)),100);
 }
 
@@ -1364,7 +1375,7 @@ async function saveAddVideosToPl(){
   renderPlDetail(addPlTargetId);
 }
 
-// ══ SOUS-SÉRIES ══
+// ══ SAISONS ══
 let currentSubPlId=null,currentSubId=null;
 
 function openCreateSubSeries(plId){
@@ -1372,7 +1383,7 @@ function openCreateSubSeries(plId){
   document.getElementById('subSeriesNameIn').value='';
   document.getElementById('subSeriesCoverThumb').innerHTML='📺';
   subSeriesCoverFile=null;
-  // Init selection = vidéos pas encore dans une sous-série
+  // Init selection = vidéos pas encore dans une saison
   const pl=playlists.find(p=>p.id===plId);
   const inSubIds=new Set((pl.subseries||[]).flatMap(ss=>ss.videoIds));
   selectedVidIds=new Set(pl.videoIds.filter(id=>!inSubIds.has(id)));
@@ -1414,7 +1425,7 @@ async function saveCreateSubSeries(){
   pl.subseries.push({id:ssId,name,videoIds:[...selectedVidIds],coverUrl});
   await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries.map(ss=>({...ss,coverBlob:ss.coverUrl&&subSeriesCoverFile&&ss.id===ssId?subSeriesCoverFile:null}))});
   document.getElementById('createSubSeriesModal').classList.remove('open');
-  showToast('✅ Sous-série créée !');
+  showToast('✅ Saison créée !');
   renderPlDetail(currentSubPlId);
 }
 function dbPutPlaylist(id,updates){
@@ -1425,7 +1436,7 @@ function dbPutPlaylist(id,updates){
   });
 }
 
-// Page sous-série
+// Page saison
 function showSubSeries(plId,ssId){
   currentSubPlId=plId;currentSubId=ssId;
   const pl=playlists.find(p=>p.id===plId);if(!pl)return;
@@ -1459,11 +1470,11 @@ function playSubSeries(ssId,plId){
   playVideo(ss.videoIds[0],ss.videoIds);
 }
 async function deleteSubSeries(plId,ssId){
-  if(!confirm('Supprimer cette sous-série ?'))return;
+  if(!confirm('Supprimer cette saison ?'))return;
   const pl=playlists.find(p=>p.id===plId);if(!pl)return;
   pl.subseries=(pl.subseries||[]).filter(s=>s.id!==ssId);
   await dbPutPlaylist(plId,{subseries:pl.subseries});
-  showToast('🗑️ Sous-série supprimée');
+  showToast('🗑️ Saison supprimée');
   showPage('pl-detail',plId);
 }
 function openEditSubSeries(plId,ssId){
@@ -1480,7 +1491,7 @@ function openEditSubSeries(plId,ssId){
   document.getElementById('createSubSeriesModal').classList.add('open');
   // Change save button to update mode
   document.getElementById('saveSubSeriesBtn').onclick=saveEditSubSeries;
-  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='MODIFIER LA SOUS-SÉRIE';
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='MODIFIER LA SAISON';
 }
 async function saveEditSubSeries(){
   const name=document.getElementById('subSeriesNameIn').value.trim();
@@ -1492,8 +1503,8 @@ async function saveEditSubSeries(){
   await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries});
   document.getElementById('createSubSeriesModal').classList.remove('open');
   document.getElementById('saveSubSeriesBtn').onclick=saveCreateSubSeries;
-  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='NOUVELLE SOUS-SÉRIE';
-  showToast('✅ Sous-série modifiée !');
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='NOUVELLE SAISON';
+  showToast('✅ Saison modifiée !');
   showSubSeries(currentSubPlId,currentSubId);
 }
 function renderSeriesDetail(sid){
