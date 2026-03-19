@@ -1228,6 +1228,7 @@ function render(){
   setTimeout(()=>document.querySelectorAll('.video-card').forEach(c=>thumbObs.observe(c)),100);
 }
 const FIXED_CATS=['Films','Séries','Documentaires','YouTube'];
+const HIDDEN_CATS=['Autre']; // cachées de l'accueil, visibles dans les playlists
 function renderSections(){
   [
     {cat:'Films',sec:'sec-films',grd:'grd-films',cnt:'cnt-films'},
@@ -1243,7 +1244,8 @@ function renderSections(){
   const sec=document.getElementById('sec-series');
   if(activeSeries.length){sec.style.display='';document.getElementById('grd-series').innerHTML=activeSeries.map(s=>seriesCardHTML(s)).join('');document.getElementById('cnt-series').textContent=activeSeries.length}
   else sec.style.display='none';
-  const otherCats=[...new Set(videos.map(v=>v.category).filter(c=>c&&!FIXED_CATS.includes(c)))];
+  // Catégories custom — on exclut "Autre" de l'affichage accueil
+  const otherCats=[...new Set(videos.map(v=>v.category).filter(c=>c&&!FIXED_CATS.includes(c)&&!HIDDEN_CATS.includes(c)))];
   document.getElementById('sec-autres').innerHTML=otherCats.map(cat=>{
     const vids=videos.filter(v=>v.category===cat);
     return `<div class="section" style="margin-top:40px">
@@ -1251,7 +1253,9 @@ function renderSections(){
       <div class="video-grid">${vids.map(v=>cardHTML(v)).join('')}</div>
     </div>`;
   }).join('');
-  document.getElementById('main-empty').style.display=videos.length?'none':'';
+  // Pour l'empty state, on compte quand même toutes les vidéos visibles (hors Autre)
+  const visibleCount=videos.filter(v=>v.category!=='Autre').length;
+  document.getElementById('main-empty').style.display=visibleCount?'none':'';
 }
 function renderPlaylists(){
   const grid=document.getElementById('plGrid');
