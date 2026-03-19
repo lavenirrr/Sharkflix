@@ -765,12 +765,16 @@ document.getElementById('coverInput').addEventListener('change',function(e){
 });
 function confirmCover(){document.getElementById('coverModal').classList.remove('open');proceedAdd()}
 function skipCover(){pendingCover=null;document.getElementById('coverModal').classList.remove('open');proceedAdd()}
-function proceedAdd(){const f=catQueue[catQueueIdx];catQueueIdx++;addVideo(f,pendingCat,pendingCover).then(()=>{render();setTimeout(nextCatPick,80)})}
+function proceedAdd(){const f=catQueue[catQueueIdx];const cover=pendingCover;const cat=pendingCat;catQueueIdx++;pendingCover=null;addVideo(f,cat,cover).then(()=>{render();setTimeout(nextCatPick,80)})}
 async function addVideo(file,category,coverFile){
   const mediaType=file.type.startsWith('audio/')?'audio':'video';
-  const record={name:cleanName(file.name),category,size:file.size,mediaType,blob:file,coverBlob:coverFile||null,seriesId:null,seasonNum:null,episodeNum:null};
+  // file.slice() crée un vrai Blob stable, indépendant de l'objet File lié à l'input HTML
+  // Cela évite que la référence soit invalidée après this.value='' sur l'input
+  const stableBlob=file.slice(0,file.size,file.type);
+  const coverBlob=coverFile?coverFile.slice(0,coverFile.size,coverFile.type):null;
+  const record={name:cleanName(file.name),category,size:file.size,mediaType,blob:stableBlob,coverBlob:coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
   const id=await dbAdd(record);
-  videos.unshift({id,name:record.name,category,size:file.size,mediaType,url:URL.createObjectURL(file),coverUrl:coverFile?URL.createObjectURL(coverFile):null,seriesId:null,seasonNum:null,episodeNum:null});
+  videos.unshift({id,name:record.name,category,size:file.size,mediaType,url:URL.createObjectURL(stableBlob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
 }
 
 // ═══ SERIES WIZARD ═══
