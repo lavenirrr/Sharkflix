@@ -619,15 +619,24 @@ let ctxTargetId=null,ctxTargetType='video',editCoverFile=null;
 let db;
 function initDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('sharkflix',4);
-    req.onupgradeneeded=e=>{
-      const d=e.target.result;
-      if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('series')) d.createObjectStore('series',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('playlists')) d.createObjectStore('playlists',{keyPath:'id',autoIncrement:true});
+    // On ouvre d'abord sans version pour détecter la version existante
+    const probe=indexedDB.open('sharkflix');
+    probe.onsuccess=e=>{
+      const existingVersion=e.target.result.version;
+      e.target.result.close();
+      // On réouvre avec la version détectée (jamais en dessous)
+      const targetVersion=Math.max(existingVersion,4);
+      const req=indexedDB.open('sharkflix',targetVersion);
+      req.onupgradeneeded=e2=>{
+        const d=e2.target.result;
+        if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
+        if(!d.objectStoreNames.contains('series')) d.createObjectStore('series',{keyPath:'id',autoIncrement:true});
+        if(!d.objectStoreNames.contains('playlists')) d.createObjectStore('playlists',{keyPath:'id',autoIncrement:true});
+      };
+      req.onsuccess=e2=>{db=e2.target.result;res()};
+      req.onerror=()=>rej(req.error);
     };
-    req.onsuccess=e=>{db=e.target.result;res()};
-    req.onerror=()=>rej(req.error);
+    probe.onerror=()=>rej(probe.error);
   });
 }
 const dbOp=(store,mode,op)=>new Promise((res,rej)=>{const tx=db.transaction(store,mode),s=tx.objectStore(store),r=op(s);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
