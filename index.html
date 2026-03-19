@@ -61,16 +61,13 @@ main{padding:0 0 100px}
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:0 24px}
 
 /* CARD */
-.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:visible;cursor:pointer;transition:.2s;position:relative;display:flex;flex-direction:column}
+.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative;display:flex;flex-direction:column}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
-/* inner clip only for thumb */
-.video-card .thumb-wrap{border-radius:var(--card-radius) var(--card-radius) 0 0;overflow:hidden}
-/* action row sits at the bottom of the card flex, separated by a border */
-.card-action-bar{border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;padding:4px 8px;background:var(--bg3);border-radius:0 0 var(--card-radius) var(--card-radius)}
-.card-menu-btn-ext{background:none;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Sans',sans-serif;transition:.15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.card-action-bar{border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;padding:4px 8px;background:var(--bg3)}
+.card-menu-btn-ext{background:none;border:none;padding:5px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Sans',sans-serif;transition:.15s;border-radius:6px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .card-menu-btn-ext:hover{color:var(--red);background:rgba(230,57,70,.1)}
 
-.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
 .video-card:hover .video-overlay{background:rgba(0,0,0,.4)}
