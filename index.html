@@ -59,9 +59,9 @@ main{padding:0 0 100px}
 .section-count{font-size:12px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 8px}
 /* GRIDS */
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:0 24px}
-.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);cursor:pointer;transition:.2s;position:relative}
+.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
-.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:var(--card-radius) var(--card-radius) 0 0}
+.thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
 .video-card:hover .video-overlay{background:rgba(0,0,0,.4)}
@@ -174,7 +174,7 @@ main{padding:0 0 100px}
 .btn-confirm{background:var(--red);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .btn-confirm:hover{background:var(--red2)}
 /* BIG MODALS (playlist create, series wizard, edit) */
-.big-modal{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.95);align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.big-modal{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.95);align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .big-modal.open{display:flex}
 .big-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:680px;margin:auto;overflow:hidden}
 .big-hdr{padding:22px 28px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -425,7 +425,7 @@ main{padding:0 0 100px}
     <p id="catModalSub">Choisis une catégorie</p>
     <div class="cat-grid">
       <button class="cat-btn" onclick="setCat('Films')">🎬 Films</button>
-      <button class="cat-btn" onclick="setCat('Séries')">📺 Séries</button>
+      <button class="cat-btn" onclick="openSeriesWiz()">📺 Séries</button>
       <button class="cat-btn" onclick="setCat('Documentaires')">🎥 Documentaires</button>
       <button class="cat-btn" onclick="setCat('YouTube')">▶ YouTube</button>
       <button class="cat-btn" onclick="setCat('Musique')">🎵 Musique</button>
@@ -651,10 +651,16 @@ function nextCatPick(){
   document.getElementById('catModal').classList.add('open');
 }
 
+function openSeriesWiz(){
+  document.getElementById('catModal').classList.remove('open');
+  pendingCat='Séries';
+  setTimeout(()=>openWiz(),80);
+}
 function setCat(cat){
   pendingCat=cat;
   document.getElementById('catModal').classList.remove('open');
-  if(cat==='Séries') setTimeout(()=>openWiz(),80);
+  const isSeries = cat==='Séries' || cat==='Series' || cat==='series' || cat==='séries';
+  if(isSeries) setTimeout(()=>openWiz(),80);
   else setTimeout(()=>openCoverModal(),80);
 }
 function setCatCustom(){setCat(document.getElementById('catCustomIn').value.trim()||'Autre')}
@@ -983,7 +989,7 @@ function openCtxMenu(event,id,type){
     menu.style.top=top+'px';menu.style.left=left+'px';menu.style.visibility='';
   });
 }
-document.addEventListener('click',()=>document.getElementById('ctxMenu').style.display='none');
+document.addEventListener('click',e=>{if(!e.target.closest('.card-menu-btn'))document.getElementById('ctxMenu').style.display='none'});
 function ctxEdit(){document.getElementById('ctxMenu').style.display='none';openEditModal(ctxTargetId,ctxTargetType)}
 function ctxToggleFeat(){
   document.getElementById('ctxMenu').style.display='none';
