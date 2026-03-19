@@ -319,6 +319,7 @@ main{padding:0 0 100px}
 <input type="file" id="editCoverInput" accept="image/*" style="display:none">
 <input type="file" id="wizSeriesCoverInput" accept="image/*" style="display:none">
 <input type="file" id="wizSeasonCoverInput" accept="image/*" style="display:none">
+<input type="file" id="subSeriesCoverInput" accept="image/*" style="display:none">
 
 <!-- ████ PAGE MAIN ████ -->
 <div id="page-main">
@@ -550,6 +551,48 @@ main{padding:0 0 100px}
   </div>
 </div>
 
+<!-- ADD VIDEOS TO PLAYLIST MODAL -->
+<div class="big-modal" id="addVideosToPl">
+  <div class="big-box">
+    <div class="big-hdr"><h2>AJOUTER DES VIDÉOS — <span id="addVidsPlName" style="color:var(--red)"></span></h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('addVideosToPl').classList.remove('open')">✕</button></div>
+    <div class="big-body">
+      <div class="sel-lbl">Vidéos sélectionnées <span class="sel-badge" id="selCount2">0</span></div>
+      <div class="sel-grid" id="videoSelGrid2"></div>
+    </div>
+    <div class="big-footer">
+      <button class="btn-cancel" onclick="document.getElementById('addVideosToPl').classList.remove('open')">Annuler</button>
+      <button class="btn-confirm" onclick="saveAddVideosToPl()">✓ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE SUB-SERIES MODAL -->
+<div class="big-modal" id="createSubSeriesModal">
+  <div class="big-box">
+    <div class="big-hdr"><h2>NOUVELLE SOUS-SÉRIE</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createSubSeriesModal').classList.remove('open')">✕</button></div>
+    <div class="big-body">
+      <div class="field-lbl">Nom</div>
+      <input type="text" class="field-in" id="subSeriesNameIn" placeholder="Ex : Saison 1, Partie 2...">
+      <div class="field-lbl">Image de couverture</div>
+      <div class="cover-row">
+        <div class="cover-prev" id="subSeriesCoverThumb">📺</div>
+        <button class="cover-pick-btn" onclick="document.getElementById('subSeriesCoverInput').click()">🖼️ Choisir une image</button>
+      </div>
+      <div class="sel-lbl">Vidéos <span class="sel-badge" id="subSelCount">0</span></div>
+      <div class="sel-grid" id="subVideoSelGrid"></div>
+    </div>
+    <div class="big-footer">
+      <button class="btn-cancel" onclick="document.getElementById('createSubSeriesModal').classList.remove('open')">Annuler</button>
+      <button class="btn-confirm" id="saveSubSeriesBtn" onclick="saveCreateSubSeries()">✓ Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ PAGE SUB-SERIES DETAIL ████ -->
+<div id="page-sub-detail" style="display:none">
+  <div class="page-wrapper" id="subDetailContent"></div>
+</div>
+
 <!-- CONTEXT MENU -->
 <div class="ctx-menu" id="ctxMenu"></div>
 
@@ -576,7 +619,7 @@ let ctxTargetId=null,ctxTargetType='video',editCoverFile=null;
 let db;
 function initDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('sharkflix',4);
+    const req=indexedDB.open('sharkflix',5);
     req.onupgradeneeded=e=>{
       const d=e.target.result;
       if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
@@ -628,7 +671,11 @@ async function loadFromDB(){
   }));
   playlists=plRows.reverse().map(r=>({
     id:r.id,name:r.name,videoIds:r.videoIds||[],
-    coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,createdAt:r.createdAt||0
+    coverUrl:r.coverBlob?URL.createObjectURL(r.coverBlob):null,createdAt:r.createdAt||0,
+    subseries:(r.subseries||[]).map(ss=>({
+      id:ss.id,name:ss.name,videoIds:ss.videoIds||[],
+      coverUrl:ss.coverBlob?URL.createObjectURL(ss.coverBlob):null
+    }))
   }));
   loadFeatured();
   render();
@@ -1010,7 +1057,7 @@ function playPl(id){
 }
 
 // ══ CONTEXT MENU ══
-function openCtxMenu(event,id,type){
+function openCtxMenu(event,id,type,parentId){
   event.stopPropagation();
   ctxTargetId=id;ctxTargetType=type||'video';
   const menu=document.getElementById('ctxMenu');
@@ -1020,6 +1067,10 @@ function openCtxMenu(event,id,type){
     html=`<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier la série</button>
     <div class="ctx-sep"></div>
     <button class="ctx-item danger" onclick="ctxDelete()">🗑️ Supprimer la série</button>`;
+  } else if(type==='subseries'){
+    html=`<button class="ctx-item" onclick="openEditSubSeries(${parentId},'${id}')">✏️ Modifier</button>
+    <div class="ctx-sep"></div>
+    <button class="ctx-item danger" onclick="deleteSubSeries(${parentId},'${id}')">🗑️ Supprimer</button>`;
   } else {
     html=`<button class="ctx-item" onclick="ctxEdit()">✏️ Modifier</button>
     <button class="ctx-item" id="ctxFeatBtn" onclick="ctxToggleFeat()">${isFeat?'★ Retirer de la une':'⭐ Mettre à la une'}</button>
@@ -1091,10 +1142,11 @@ async function saveEdit(){
 // ══ NAVIGATION ══
 function showPage(page,data){
   currentPage=page;
-  ['page-main','page-playlists','page-pl-detail','page-series-detail'].forEach(id=>{
+  ['page-main','page-playlists','page-pl-detail','page-series-detail','page-sub-detail'].forEach(id=>{
     document.getElementById(id).style.display='none';
   });
-  document.getElementById('page-'+({main:'main',playlists:'playlists','pl-detail':'pl-detail','series-detail':'series-detail'}[page]||'main')).style.display='';
+  const pageMap={main:'main',playlists:'playlists','pl-detail':'pl-detail','series-detail':'series-detail','sub-detail':'sub-detail'};
+  document.getElementById('page-'+(pageMap[page]||'main')).style.display='';
   document.getElementById('mobMenu').classList.remove('open');
   if(page==='playlists')renderPlaylists();
   if(page==='pl-detail'&&data!=null){currentPlId=data;renderPlDetail(data)}
@@ -1207,17 +1259,229 @@ function renderPlaylists(){
 function renderPlDetail(plId){
   const pl=playlists.find(p=>p.id===plId);if(!pl){showPage('playlists');return}
   const plVids=pl.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+  const subs=pl.subseries||[];
+  // All video ids already in a subseries
+  const inSubIds=new Set(subs.flatMap(ss=>ss.videoIds));
+  // Free videos = in playlist but not in any subseries
+  const freeVids=plVids.filter(v=>!inSubIds.has(v.id));
+
+  const subCardsHTML=subs.map(ss=>{
+    const ssVids=ss.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+    const cover=ss.coverUrl
+      ?`<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`
+      :`<span style="font-size:36px">📺</span>`;
+    return `<div class="video-card" onclick="showSubSeries(${pl.id},'${ss.id}')">
+      <div class="thumb-wrap" style="background:linear-gradient(135deg,#1a0a2e,#0a1a2e)">
+        ${cover}
+        <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+      </div>
+      <div class="video-info">
+        <div class="video-title">${ss.name}</div>
+        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Sous-série</span><span class="video-size">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</span></div>
+      </div>
+      <div class="card-action-bar" onclick="event.stopPropagation()">
+        <button class="card-menu-btn-ext" onclick="openCtxMenu(event,'${ss.id}','subseries',${pl.id})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          Options
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
   document.getElementById('plDetailContent').innerHTML=`
-    <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('playlists')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Séries</button></div>
-      <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deletePl(${pl.id})">🗑️ Supprimer</button></div>
+    <div class="page-top-bar">
+      <div class="page-top-bar-left"><button class="back-btn" onclick="showPage('playlists')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Séries</button></div>
+      <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deletePl(${pl.id})">🗑️ Supprimer</button>
+    </div>
     <div class="detail-hero">
       <div class="detail-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}</div>
-      <div class="detail-info"><div class="detail-name">${pl.name}</div><div class="detail-meta">${plVids.length} vidéo${plVids.length!==1?'s':''}</div>
-        ${plVids.length?`<button class="btn-play" onclick="playPl(${pl.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
+      <div class="detail-info">
+        <div class="detail-name">${pl.name}</div>
+        <div class="detail-meta">${subs.length} sous-série${subs.length!==1?'s':''} · ${plVids.length} vidéo${plVids.length!==1?'s':''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          ${plVids.length?`<button class="btn-play" onclick="playPl(${pl.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
+          <button class="btn-ghost" onclick="openCreateSubSeries(${pl.id})" style="display:flex;align-items:center;gap:7px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nouvelle sous-série
+          </button>
+          <button class="btn-ghost" onclick="openAddVideosToPl(${pl.id})" style="display:flex;align-items:center;gap:7px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter des vidéos
+          </button>
+        </div>
       </div>
     </div>
-    <div class="video-grid">${plVids.length?plVids.map(v=>cardHTML(v)).join(''):'<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3></div>'}</div>`;
+    ${subs.length?`<div class="section"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:#a855f7"></div><span class="section-title">SOUS-SÉRIES</span></div><span class="section-count">${subs.length}</span></div><div class="video-grid">${subCardsHTML}</div></div>`:''}
+    ${freeVids.length?`<div class="section" style="margin-top:24px"><div class="section-header"><div class="section-header-left"><div class="section-accent" style="background:var(--red)"></div><span class="section-title">VIDÉOS</span></div><span class="section-count">${freeVids.length}</span></div><div class="video-grid" id="plDetailGrid">${freeVids.map(v=>cardHTML(v)).join('')}</div></div>`:''}
+    ${!subs.length&&!freeVids.length?`<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3><p>Crée une sous-série ou ajoute des vidéos</p></div>`:''}`;
   setTimeout(()=>document.querySelectorAll('#plDetailContent .video-card').forEach(c=>thumbObs.observe(c)),100);
+}
+
+let addPlTargetId=null;
+function openAddVideosToPl(plId){
+  addPlTargetId=plId;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  // init selection from existing ids
+  selectedVidIds=new Set(pl.videoIds);
+  document.getElementById('addVidsPlName').textContent=pl.name;
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
+  renderVideoSel2();
+  document.getElementById('addVideosToPl').classList.add('open');
+}
+function renderVideoSel2(){
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
+  document.getElementById('videoSelGrid2').innerHTML=videos.map(v=>{
+    const sel=selectedVidIds.has(v.id);
+    const thumb=v.coverUrl?`<img src="${v.coverUrl}">`:`<span>${isAudio(v)?'🎵':'▶'}</span>`;
+    return `<div class="sel-card${sel?' selected':''}" data-id="${v.id}" onclick="toggleVidSel2(${v.id})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel?'✓':''}</div></div><div class="sel-title">${v.name}</div></div>`;
+  }).join('');
+}
+function toggleVidSel2(id){
+  selectedVidIds.has(id)?selectedVidIds.delete(id):selectedVidIds.add(id);
+  document.getElementById('selCount2').textContent=selectedVidIds.size;
+  document.querySelectorAll('#videoSelGrid2 .sel-card').forEach(c=>{const cid=parseInt(c.dataset.id);const s=selectedVidIds.has(cid);c.classList.toggle('selected',s);const ch=c.querySelector('.sel-check');if(ch)ch.textContent=s?'✓':''});
+}
+async function saveAddVideosToPl(){
+  const pl=playlists.find(p=>p.id===addPlTargetId);if(!pl)return;
+  pl.videoIds=[...selectedVidIds];
+  await new Promise((res,rej)=>{
+    const tx=db.transaction('playlists','readwrite'),s=tx.objectStore('playlists'),r=s.get(addPlTargetId);
+    r.onsuccess=()=>{const rec=r.result;rec.videoIds=[...selectedVidIds];s.put(rec);tx.oncomplete=res;tx.onerror=rej};
+  });
+  document.getElementById('addVideosToPl').classList.remove('open');
+  showToast('✅ Série mise à jour !');
+  renderPlDetail(addPlTargetId);
+}
+
+// ══ SOUS-SÉRIES ══
+let currentSubPlId=null,currentSubId=null;
+
+function openCreateSubSeries(plId){
+  currentSubPlId=plId;
+  document.getElementById('subSeriesNameIn').value='';
+  document.getElementById('subSeriesCoverThumb').innerHTML='📺';
+  subSeriesCoverFile=null;
+  // Init selection = vidéos pas encore dans une sous-série
+  const pl=playlists.find(p=>p.id===plId);
+  const inSubIds=new Set((pl.subseries||[]).flatMap(ss=>ss.videoIds));
+  selectedVidIds=new Set(pl.videoIds.filter(id=>!inSubIds.has(id)));
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  renderSubVideoSel(plId);
+  document.getElementById('createSubSeriesModal').classList.add('open');
+}
+let subSeriesCoverFile=null;
+document.getElementById('subSeriesCoverInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;subSeriesCoverFile=f;
+  const thumb=document.getElementById('subSeriesCoverThumb');
+  thumb.querySelectorAll('img').forEach(x=>x.remove());
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px';
+  thumb.appendChild(img);this.value='';
+});
+function renderSubVideoSel(plId){
+  const pl=playlists.find(p=>p.id===plId);
+  const plVidIds=new Set(pl.videoIds);
+  const plVids=videos.filter(v=>plVidIds.has(v.id));
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  document.getElementById('subVideoSelGrid').innerHTML=plVids.map(v=>{
+    const sel=selectedVidIds.has(v.id);
+    const thumb=v.coverUrl?`<img src="${v.coverUrl}">`:`<span>${isAudio(v)?'🎵':'▶'}</span>`;
+    return `<div class="sel-card${sel?' selected':''}" data-id="${v.id}" onclick="toggleSubVidSel(${v.id},${plId})"><div class="sel-thumb">${thumb}<div class="sel-check">${sel?'✓':''}</div></div><div class="sel-title">${v.name}</div></div>`;
+  }).join('')||'<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px">Ajoute d\'abord des vidéos à la série principale</div>';
+}
+function toggleSubVidSel(id,plId){
+  selectedVidIds.has(id)?selectedVidIds.delete(id):selectedVidIds.add(id);
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  document.querySelectorAll('#subVideoSelGrid .sel-card').forEach(c=>{const cid=parseInt(c.dataset.id);const s=selectedVidIds.has(cid);c.classList.toggle('selected',s);const ch=c.querySelector('.sel-check');if(ch)ch.textContent=s?'✓':''});
+}
+async function saveCreateSubSeries(){
+  const name=document.getElementById('subSeriesNameIn').value.trim();
+  if(!name){showToast('❌ Donne un nom');return}
+  const pl=playlists.find(p=>p.id===currentSubPlId);if(!pl)return;
+  pl.subseries=pl.subseries||[];
+  const ssId='ss_'+Date.now();
+  const coverUrl=subSeriesCoverFile?URL.createObjectURL(subSeriesCoverFile):null;
+  pl.subseries.push({id:ssId,name,videoIds:[...selectedVidIds],coverUrl});
+  await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries.map(ss=>({...ss,coverBlob:ss.coverUrl&&subSeriesCoverFile&&ss.id===ssId?subSeriesCoverFile:null}))});
+  document.getElementById('createSubSeriesModal').classList.remove('open');
+  showToast('✅ Sous-série créée !');
+  renderPlDetail(currentSubPlId);
+}
+function dbPutPlaylist(id,updates){
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('playlists','readwrite'),s=tx.objectStore('playlists'),r=s.get(id);
+    r.onsuccess=()=>{const rec=r.result;Object.assign(rec,updates);const p=s.put(rec);p.onsuccess=()=>res();p.onerror=()=>rej(p.error)};
+    r.onerror=()=>rej(r.error);
+  });
+}
+
+// Page sous-série
+function showSubSeries(plId,ssId){
+  currentSubPlId=plId;currentSubId=ssId;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss)return;
+  const ssVids=ss.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
+  document.getElementById('subDetailContent').innerHTML=`
+    <div class="page-top-bar">
+      <div class="page-top-bar-left"><button class="back-btn" onclick="showPage('pl-detail',${plId})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Retour</button></div>
+      <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deleteSubSeries(${plId},'${ssId}')">🗑️ Supprimer</button>
+    </div>
+    <div class="detail-hero">
+      <div class="detail-cover">${ss.coverUrl?`<img src="${ss.coverUrl}">`:'📺'}</div>
+      <div class="detail-info">
+        <div class="detail-name">${ss.name}</div>
+        <div class="detail-meta">${ssVids.length} vidéo${ssVids.length!==1?'s':''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          ${ssVids.length?`<button class="btn-play" onclick="playSubSeries('${ssId}',${plId})"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Lire tout</button>`:''}
+          <button class="btn-ghost" onclick="openEditSubSeries(${plId},'${ssId}')" style="display:flex;align-items:center;gap:7px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Modifier
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="video-grid">${ssVids.length?ssVids.map(v=>cardHTML(v)).join(''):'<div class="empty-state"><div class="icon">📭</div><h3>VIDE</h3></div>'}</div>`;
+  showPage('sub-detail');
+  setTimeout(()=>document.querySelectorAll('#subDetailContent .video-card').forEach(c=>thumbObs.observe(c)),100);
+}
+function playSubSeries(ssId,plId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss||!ss.videoIds.length)return;
+  playVideo(ss.videoIds[0],ss.videoIds);
+}
+async function deleteSubSeries(plId,ssId){
+  if(!confirm('Supprimer cette sous-série ?'))return;
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  pl.subseries=(pl.subseries||[]).filter(s=>s.id!==ssId);
+  await dbPutPlaylist(plId,{subseries:pl.subseries});
+  showToast('🗑️ Sous-série supprimée');
+  showPage('pl-detail',plId);
+}
+function openEditSubSeries(plId,ssId){
+  const pl=playlists.find(p=>p.id===plId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===ssId);if(!ss)return;
+  currentSubPlId=plId;currentSubId=ssId;
+  document.getElementById('subSeriesNameIn').value=ss.name;
+  const thumb=document.getElementById('subSeriesCoverThumb');
+  thumb.innerHTML=ss.coverUrl?`<img src="${ss.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:10px">`:'📺';
+  subSeriesCoverFile=null;
+  selectedVidIds=new Set(ss.videoIds);
+  document.getElementById('subSelCount').textContent=selectedVidIds.size;
+  renderSubVideoSel(plId);
+  document.getElementById('createSubSeriesModal').classList.add('open');
+  // Change save button to update mode
+  document.getElementById('saveSubSeriesBtn').onclick=saveEditSubSeries;
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='MODIFIER LA SOUS-SÉRIE';
+}
+async function saveEditSubSeries(){
+  const name=document.getElementById('subSeriesNameIn').value.trim();
+  if(!name){showToast('❌ Donne un nom');return}
+  const pl=playlists.find(p=>p.id===currentSubPlId);if(!pl)return;
+  const ss=(pl.subseries||[]).find(s=>s.id===currentSubId);if(!ss)return;
+  ss.name=name;ss.videoIds=[...selectedVidIds];
+  if(subSeriesCoverFile){ss.coverUrl=URL.createObjectURL(subSeriesCoverFile)}
+  await dbPutPlaylist(currentSubPlId,{subseries:pl.subseries});
+  document.getElementById('createSubSeriesModal').classList.remove('open');
+  document.getElementById('saveSubSeriesBtn').onclick=saveCreateSubSeries;
+  document.getElementById('createSubSeriesModal').querySelector('.big-hdr h2').textContent='NOUVELLE SOUS-SÉRIE';
+  showToast('✅ Sous-série modifiée !');
+  showSubSeries(currentSubPlId,currentSubId);
 }
 function renderSeriesDetail(sid){
   const ser=seriesList.find(s=>s.id===sid);if(!ser){showPage('main');return}
