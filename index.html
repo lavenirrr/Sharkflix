@@ -706,13 +706,21 @@ function saveFeatured(){localStorage.setItem('sf_feat',JSON.stringify(featuredId
 
 // ══ FILE IMPORT ══
 document.getElementById('fileInput').addEventListener('change',function(e){
-  const files=Array.from(e.target.files).filter(f=>f.type.startsWith('video/')||f.type.startsWith('audio/'));
-  if(!files.length){showToast('❌ Aucun fichier vidéo');return}
-  catQueue=files;catQueueIdx=0;
+  const rawFiles=Array.from(e.target.files).filter(f=>f.type.startsWith('video/')||f.type.startsWith('audio/'));
+  if(!rawFiles.length){showToast('❌ Aucun fichier vidéo');return}
+  // On clone chaque File en Blob stable AVANT de vider l'input
+  // Sur certains navigateurs (Safari/mobile), this.value='' invalide les références File
+  catQueue=rawFiles.map(f=>({
+    blob: f.slice(0,f.size,f.type),
+    name: f.name,
+    size: f.size,
+    type: f.type
+  }));
+  catQueueIdx=0;
+  this.value='';
   const f=catQueue[0];
   document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
   document.getElementById('typeModal').classList.add('open');
-  this.value='';
 });
 
 function chooseType(type){
@@ -765,16 +773,21 @@ document.getElementById('coverInput').addEventListener('change',function(e){
 });
 function confirmCover(){document.getElementById('coverModal').classList.remove('open');proceedAdd()}
 function skipCover(){pendingCover=null;document.getElementById('coverModal').classList.remove('open');proceedAdd()}
-function proceedAdd(){const f=catQueue[catQueueIdx];const cover=pendingCover;const cat=pendingCat;catQueueIdx++;pendingCover=null;addVideo(f,cat,cover).then(()=>{render();setTimeout(nextCatPick,80)})}
-async function addVideo(file,category,coverFile){
-  const mediaType=file.type.startsWith('audio/')?'audio':'video';
-  // file.slice() crée un vrai Blob stable, indépendant de l'objet File lié à l'input HTML
-  // Cela évite que la référence soit invalidée après this.value='' sur l'input
-  const stableBlob=file.slice(0,file.size,file.type);
+function proceedAdd(){
+  const f=catQueue[catQueueIdx];
+  const cover=pendingCover;
+  const cat=pendingCat;
+  catQueueIdx++;
+  pendingCover=null;
+  addVideo(f,cat,cover).then(()=>{render();setTimeout(nextCatPick,80)})
+}
+async function addVideo(f,category,coverFile){
+  const mediaType=f.type.startsWith('audio/')?'audio':'video';
+  // f.blob est déjà un Blob stable cloné depuis le File original
   const coverBlob=coverFile?coverFile.slice(0,coverFile.size,coverFile.type):null;
-  const record={name:cleanName(file.name),category,size:file.size,mediaType,blob:stableBlob,coverBlob:coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
+  const record={name:cleanName(f.name),category,size:f.size,mediaType,blob:f.blob,coverBlob:coverBlob,seriesId:null,seasonNum:null,episodeNum:null};
   const id=await dbAdd(record);
-  videos.unshift({id,name:record.name,category,size:file.size,mediaType,url:URL.createObjectURL(stableBlob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
+  videos.unshift({id,name:record.name,category,size:f.size,mediaType,url:URL.createObjectURL(f.blob),coverUrl:coverBlob?URL.createObjectURL(coverBlob):null,seriesId:null,seasonNum:null,episodeNum:null});
 }
 
 // ═══ SERIES WIZARD ═══
@@ -985,9 +998,9 @@ async function doWizImport(){
     const file=files[i];
     const title=wizEpTitles[i]||cleanName(file.name);
     const epNum=startEp+i;
-    const rec={name:title,category:'Séries',size:file.size,mediaType:'video',blob:file,coverBlob:null,seriesId:sid,seasonNum:snum,episodeNum:epNum};
+    const rec={name:title,category:'Séries',size:file.size,mediaType:'video',blob:file.blob,coverBlob:null,seriesId:sid,seasonNum:snum,episodeNum:epNum};
     const id=await dbAdd(rec);
-    videos.unshift({id,name:title,category:'Séries',size:file.size,mediaType:'video',url:URL.createObjectURL(file),coverUrl:null,seriesId:sid,seasonNum:snum,episodeNum:epNum});
+    videos.unshift({id,name:title,category:'Séries',size:file.size,mediaType:'video',url:URL.createObjectURL(file.blob),coverUrl:null,seriesId:sid,seasonNum:snum,episodeNum:epNum});
     catQueueIdx++;
   }
   document.getElementById('wizModal').classList.remove('open');
