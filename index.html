@@ -59,8 +59,18 @@ main{padding:0 0 100px}
 .section-count{font-size:12px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 8px}
 /* GRIDS */
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:0 24px}
-.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius);overflow:hidden;cursor:pointer;transition:.2s;position:relative}
+
+/* CARD WRAPPER: card + button underneath */
+.card-outer{display:flex;flex-direction:column;gap:0}
+.video-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-radius) var(--card-radius) 0 0;overflow:hidden;cursor:pointer;transition:.2s;position:relative}
 .video-card:hover{transform:translateY(-4px) scale(1.01);border-color:rgba(230,57,70,.5);box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.card-action-bar{background:var(--bg3);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--card-radius) var(--card-radius);display:flex;align-items:center;justify-content:flex-end;padding:4px 8px;transition:.2s}
+.card-outer:hover .card-action-bar{border-color:rgba(230,57,70,.5)}
+.card-outer:hover .video-card{box-shadow:none}
+.card-outer:hover .card-action-bar{box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.card-menu-btn-ext{background:none;border:none;border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Sans',sans-serif;transition:.15s;-webkit-tap-highlight-color:transparent}
+.card-menu-btn-ext:hover{color:var(--red);background:rgba(230,57,70,.1)}
+
 .thumb-wrap{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg3),#1e1e30);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .thumb-icon{font-size:32px;color:rgba(230,57,70,.25);position:relative;z-index:0}
 .video-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:.2s;z-index:2;pointer-events:none}
@@ -75,10 +85,7 @@ main{padding:0 0 100px}
 .video-size{font-size:11px;color:var(--muted);margin-left:auto}
 .thumb-wrap.is-audio{background:linear-gradient(135deg,#0d1a2e,#1a0820)}
 .badge-mp3{font-size:10px;color:#22d3ee;background:rgba(34,211,238,.1);border-radius:3px;padding:2px 6px;border:1px solid rgba(34,211,238,.2)}
-/* 3-DOT MENU BUTTON */
-.card-menu-btn{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s;z-index:20;background:rgba(0,0,0,.82);border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;pointer-events:all;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.video-card:hover .card-menu-btn,.pl-card:hover .card-menu-btn{opacity:1}
-@media(max-width:900px){.card-menu-btn{opacity:1;width:38px;height:38px}}
+
 /* CONTEXT MENU */
 .ctx-menu{position:fixed;background:var(--bg2);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:4px;z-index:600;min-width:190px;box-shadow:0 8px 32px rgba(0,0,0,.7);display:none}
 .ctx-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);background:none;border:none;width:100%;font-family:'DM Sans',sans-serif;transition:.12s;text-align:left}
@@ -173,7 +180,7 @@ main{padding:0 0 100px}
 .cat-custom input:focus{border-color:var(--red)}
 .btn-confirm{background:var(--red);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .btn-confirm:hover{background:var(--red2)}
-/* BIG MODALS (playlist create, series wizard, edit) */
+/* BIG MODALS */
 .big-modal{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.95);align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .big-modal.open{display:flex}
 .big-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:680px;margin:auto;overflow:hidden}
@@ -191,7 +198,7 @@ main{padding:0 0 100px}
 .cover-pick-btn:hover{border-color:var(--red);color:var(--red)}
 .btn-cancel{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 20px;color:var(--text);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s}
 .btn-cancel:hover{border-color:var(--red)}
-/* VIDEO SELECTOR (playlist) */
+/* VIDEO SELECTOR */
 .sel-lbl{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .sel-badge{background:var(--red);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700}
 .sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;max-height:280px;overflow-y:auto;padding-right:4px;margin-bottom:20px}
@@ -283,7 +290,7 @@ main{padding:0 0 100px}
     </div>
     <button class="btn-ghost" onclick="showPage('playlists')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span>Playlists</span>
+      <span>Séries</span>
     </button>
     <button class="btn-import" onclick="document.getElementById('fileInput').click()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -301,7 +308,7 @@ main{padding:0 0 100px}
   </div>
   <button class="mob-btn" onclick="showPage('playlists');document.getElementById('mobMenu').classList.remove('open')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    Mes Playlists
+    Mes Séries
   </button>
   <button class="mob-btn" onclick="document.getElementById('fileInput').click();document.getElementById('mobMenu').classList.remove('open')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -355,15 +362,15 @@ main{padding:0 0 100px}
   </main>
 </div>
 
-<!-- ████ PAGE PLAYLISTS ████ -->
+<!-- ████ PAGE PLAYLISTS (= Séries) ████ -->
 <div id="page-playlists" style="display:none">
   <div class="page-wrapper">
     <div class="page-top-bar">
       <div class="page-top-bar-left">
         <button class="back-btn" onclick="showPage('main')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Accueil</button>
-        <span class="page-title">MES PLAYLISTS</span>
+        <span class="page-title">MES SÉRIES</span>
       </div>
-      <button class="btn-import" onclick="openCreatePl()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Créer une playlist</button>
+      <button class="btn-import" onclick="openCreatePl()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Créer une série</button>
     </div>
     <div class="pl-grid" id="plGrid"></div>
   </div>
@@ -418,7 +425,7 @@ main{padding:0 0 100px}
   </div>
 </div>
 
-<!-- TYPE MODAL (Films ou Série) -->
+<!-- TYPE MODAL -->
 <div class="sm-modal" id="typeModal">
   <div class="sm-box">
     <h2>TYPE D'IMPORT</h2>
@@ -430,7 +437,7 @@ main{padding:0 0 100px}
   </div>
 </div>
 
-<!-- CATEGORY MODAL (for films) -->
+<!-- CATEGORY MODAL -->
 <div class="sm-modal" id="catModal">
   <div class="sm-box">
     <h2>CATÉGORIE</h2>
@@ -454,7 +461,7 @@ main{padding:0 0 100px}
 <!-- CREATE PLAYLIST MODAL -->
 <div class="big-modal" id="createPlModal">
   <div class="big-box">
-    <div class="big-hdr"><h2>CRÉER UNE PLAYLIST</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createPlModal').classList.remove('open')">✕</button></div>
+    <div class="big-hdr"><h2>CRÉER UNE SÉRIE</h2><button class="modal-close" style="position:static;width:32px;height:32px" onclick="document.getElementById('createPlModal').classList.remove('open')">✕</button></div>
     <div class="big-body">
       <div class="field-lbl">Nom</div>
       <input type="text" class="field-in" id="plNameIn" placeholder="Ex : Mes films du soir...">
@@ -485,7 +492,6 @@ main{padding:0 0 100px}
       <div class="wiz-tab" id="wizTab2">② Saison</div>
       <div class="wiz-tab" id="wizTab3">③ Épisodes</div>
     </div>
-    <!-- Step 1 -->
     <div class="big-body" id="wizStep1">
       <div class="field-lbl">Séries existantes</div>
       <div class="wiz-items" id="wizSeriesItems"></div>
@@ -500,7 +506,6 @@ main{padding:0 0 100px}
         </div>
       </div>
     </div>
-    <!-- Step 2 -->
     <div class="big-body" id="wizStep2" style="display:none">
       <div class="field-lbl">Saisons existantes</div>
       <div class="wiz-items" id="wizSeasonItems"></div>
@@ -517,7 +522,6 @@ main{padding:0 0 100px}
         </div>
       </div>
     </div>
-    <!-- Step 3 -->
     <div class="big-body" id="wizStep3" style="display:none">
       <div id="wizBatchWrap" style="margin-bottom:16px"></div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="wizEpSummary"></div>
@@ -563,18 +567,13 @@ let heroIdx=0,heroTimer=null;
 let playQueue=[],playIdx=0,autoNext=true,antTimer=null,currentId=null;
 let currentPage='main',currentPlId=null,currentSeriesId=null;
 
-// Import flow
 let catQueue=[],catQueueIdx=0,pendingCat=null,pendingCover=null;
 
-// Wizard
 let wizStep=1,wizSeriesId=null,wizSeasonNum=null;
 let wizNewSeriesCoverFile=null,wizNewSeasonCoverFile=null,wizIncludeAll=false;
 let wizEpTitles=[];
 
-// Playlist create
 let selectedVidIds=new Set(),plCoverFile=null;
-
-// Edit
 let ctxTargetId=null,ctxTargetType='video',editCoverFile=null;
 
 // ══ DB ══
@@ -648,7 +647,6 @@ document.getElementById('fileInput').addEventListener('change',function(e){
   const files=Array.from(e.target.files).filter(f=>f.type.startsWith('video/')||f.type.startsWith('audio/'));
   if(!files.length){showToast('❌ Aucun fichier vidéo');return}
   catQueue=files;catQueueIdx=0;
-  // Show type modal first (Film or Serie)
   const f=catQueue[0];
   document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
   document.getElementById('typeModal').classList.add('open');
@@ -661,7 +659,6 @@ function chooseType(type){
     pendingCat='Séries';
     setTimeout(()=>openWiz(),80);
   } else {
-    // Show category modal for films
     const f=catQueue[catQueueIdx];
     document.getElementById('catModalSub').textContent=`"${cleanName(f.name)}"`;
     document.getElementById('catCustomIn').value='';
@@ -676,7 +673,6 @@ function nextCatPick(){
     catQueue=[];pendingCat=null;pendingCover=null;return;
   }
   const f=catQueue[catQueueIdx];
-  // For subsequent files in queue, show type modal again
   document.getElementById('typeModalSub').textContent=`"${cleanName(f.name)}"`;
   document.getElementById('typeModal').classList.add('open');
 }
@@ -689,7 +685,6 @@ function setCat(cat){
 function setCatCustom(){setCat(document.getElementById('catCustomIn').value.trim()||'Autre')}
 document.getElementById('catCustomIn').addEventListener('keydown',e=>{if(e.key==='Enter')setCatCustom()});
 
-// ── Standard cover flow ──
 function openCoverModal(){
   const f=catQueue[catQueueIdx];pendingCover=null;
   document.getElementById('coverModalSub').textContent=`"${cleanName(f.name)}"`;
@@ -756,7 +751,6 @@ function renderWizSeriesItems(){
       ${wizSeriesId===s.id?'<span class="wiz-item-check">✓</span>':''}
     </div>`).join('')+
     `<button class="wiz-add-btn" onclick="showWizNewSeriesForm()">+ Nouvelle série</button>`;
-  // Auto-show form if no series exist
   if(!activeSeries.length) showWizNewSeriesForm();
 }
 function wizPickSeries(id){
@@ -789,7 +783,6 @@ function wizPickSeason(num){
 }
 function showWizNewSeasonForm(){
   wizSeasonNum=null;
-  // Auto-number
   const ser=seriesList.find(s=>s.id===wizSeriesId);
   const maxSeason=ser&&ser.seasons.length?Math.max(...ser.seasons.map(s=>s.num)):0;
   document.getElementById('wizSeasonNumIn').value=maxSeason+1;
@@ -845,7 +838,6 @@ async function wizNext(){
   }
 }
 async function doWizImport(){
-  // 1. Crée la série si nouvelle
   let sid=wizSeriesId;
   if(!sid){
     const name=document.getElementById('wizSeriesNameIn').value.trim();
@@ -855,24 +847,20 @@ async function doWizImport(){
     seriesList.unshift({id,name,coverUrl,seasons:[]});
     sid=id;
   }
-  // 2. Crée la saison si nouvelle
   let snum=wizSeasonNum;
   if(!snum){
     snum=parseInt(document.getElementById('wizSeasonNumIn').value)||1;
     const sname=document.getElementById('wizSeasonNameIn').value.trim()||`Saison ${snum}`;
     const coverFile=wizNewSeasonCoverFile;
     const coverUrl=coverFile?URL.createObjectURL(coverFile):null;
-    // Update series in memory
     const ser=seriesList.find(s=>s.id===sid);
     ser.seasons.push({num:snum,name:sname,coverUrl});
     ser.seasons.sort((a,b)=>a.num-b.num);
-    // Update in DB
     await new Promise((res,rej)=>{
       const tx=db.transaction('series','readwrite'),store=tx.objectStore('series'),r=store.get(sid);
       r.onsuccess=()=>{const rec=r.result;rec.seasons=rec.seasons||[];rec.seasons.push({num:snum,name:sname,coverBlob:coverFile||null});rec.seasons.sort((a,b)=>a.num-b.num);store.put(rec);tx.oncomplete=res;tx.onerror=rej};
     });
   }
-  // 3. Import episodes
   const files=wizIncludeAll?catQueue.slice(catQueueIdx):[catQueue[catQueueIdx]];
   const existingEps=videos.filter(v=>v.seriesId===sid&&v.seasonNum===snum);
   const startEp=existingEps.length+1;
@@ -892,7 +880,6 @@ async function doWizImport(){
   setTimeout(()=>nextCatPick(),80);
 }
 
-// Wizard cover pickers
 document.getElementById('wizSeriesCoverInput').addEventListener('change',function(e){
   const f=e.target.files[0];if(!f)return;wizNewSeriesCoverFile=f;
   const prev=document.getElementById('wizSeriesCoverPrev');
@@ -969,14 +956,14 @@ async function createPlaylist(){
   const coverUrl=plCoverFile?URL.createObjectURL(plCoverFile):null;
   playlists.unshift({id,name,videoIds:[...selectedVidIds],coverUrl,createdAt:rec.createdAt});
   document.getElementById('createPlModal').classList.remove('open');
-  showToast('✅ Playlist créée !');renderPlaylists();
+  showToast('✅ Série créée !');renderPlaylists();
 }
 async function deletePl(id){
-  if(!confirm('Supprimer cette playlist ?'))return;
+  if(!confirm('Supprimer cette série ?'))return;
   await dbDelPl(id);
   const pl=playlists.find(p=>p.id===id);if(pl&&pl.coverUrl)URL.revokeObjectURL(pl.coverUrl);
   playlists=playlists.filter(p=>p.id!==id);
-  showToast('🗑️ Playlist supprimée');showPage('playlists');
+  showToast('🗑️ Série supprimée');showPage('playlists');
 }
 function playPl(id){
   const pl=playlists.find(p=>p.id===id);if(!pl)return;
@@ -1100,7 +1087,6 @@ function renderHero(){
         </div>
       </div>
     </div>`).join('');
-  // Set backgrounds
   featVids.forEach((v,i)=>{
     const slide=track.children[i];
     if(v.coverUrl)slide.style.backgroundImage=`url(${v.coverUrl})`;
@@ -1143,23 +1129,20 @@ function render(){
 }
 const FIXED_CATS=['Films','Séries','Documentaires','YouTube'];
 function renderSections(){
-  // Fixed sections
   [
-    {cat:'Films',sec:'sec-films',grd:'grd-films',cnt:'cnt-films',isVideoList:true},
-    {cat:'Documentaires',sec:'sec-docs',grd:'grd-docs',cnt:'cnt-docs',isVideoList:true},
-    {cat:'YouTube',sec:'sec-yt',grd:'grd-yt',cnt:'cnt-yt',isVideoList:true},
+    {cat:'Films',sec:'sec-films',grd:'grd-films',cnt:'cnt-films'},
+    {cat:'Documentaires',sec:'sec-docs',grd:'grd-docs',cnt:'cnt-docs'},
+    {cat:'YouTube',sec:'sec-yt',grd:'grd-yt',cnt:'cnt-yt'},
   ].forEach(({cat,sec,grd,cnt})=>{
     const vids=videos.filter(v=>v.category===cat);
     const el=document.getElementById(sec);
     if(vids.length){el.style.display='';document.getElementById(grd).innerHTML=vids.map(v=>cardHTML(v)).join('');document.getElementById(cnt).textContent=vids.length}
     else el.style.display='none';
   });
-  // Series section
   const activeSeries=seriesList.filter(s=>videos.some(v=>v.seriesId===s.id));
   const sec=document.getElementById('sec-series');
   if(activeSeries.length){sec.style.display='';document.getElementById('grd-series').innerHTML=activeSeries.map(s=>seriesCardHTML(s)).join('');document.getElementById('cnt-series').textContent=activeSeries.length}
   else sec.style.display='none';
-  // Other cats
   const otherCats=[...new Set(videos.map(v=>v.category).filter(c=>c&&!FIXED_CATS.includes(c)))];
   document.getElementById('sec-autres').innerHTML=otherCats.map(cat=>{
     const vids=videos.filter(v=>v.category===cat);
@@ -1172,7 +1155,7 @@ function renderSections(){
 }
 function renderPlaylists(){
   const grid=document.getElementById('plGrid');
-  if(!playlists.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎵</div><h3>AUCUNE PLAYLIST</h3><p>Crée ta première playlist avec le bouton ci-dessus</p></div>`;return}
+  if(!playlists.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎵</div><h3>AUCUNE SÉRIE</h3><p>Crée ta première série avec le bouton ci-dessus</p></div>`;return}
   grid.innerHTML=playlists.map(pl=>{
     const count=pl.videoIds.filter(id=>videos.find(v=>v.id===id)).length;
     return `<div class="pl-card" onclick="showPage('pl-detail',${pl.id})">
@@ -1186,7 +1169,7 @@ function renderPlDetail(plId){
   const pl=playlists.find(p=>p.id===plId);if(!pl){showPage('playlists');return}
   const plVids=pl.videoIds.map(id=>videos.find(v=>v.id===id)).filter(Boolean);
   document.getElementById('plDetailContent').innerHTML=`
-    <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('playlists')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Playlists</button></div>
+    <div class="page-top-bar"><div class="page-top-bar-left"><button class="back-btn" onclick="showPage('playlists')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Séries</button></div>
       <button class="back-btn" style="color:var(--red);border-color:rgba(230,57,70,.4)" onclick="deletePl(${pl.id})">🗑️ Supprimer</button></div>
     <div class="detail-hero">
       <div class="detail-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}</div>
@@ -1256,34 +1239,51 @@ function playSeriesAll(sid){
 }
 
 // ══ CARD HTML ══
+// Card is now wrapped in .card-outer so the action bar sits OUTSIDE the card itself
 function cardHTML(v){
-  const thumbEl=v.coverUrl?`<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="">`:(!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:'');
-  return `<div class="video-card" onclick="playVideo(${v.id})">
-    <div class="thumb-wrap${isAudio(v)?' is-audio':''}"><span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>${thumbEl}
-      <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
-    </div>
-    <div class="video-info">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-        <div class="video-title" style="flex:1;margin-bottom:0">${v.name}</div>
-        <button style="flex-shrink:0;background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;padding:0" onclick="event.stopPropagation();openCtxMenu(event,${v.id},'video')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+  const thumbEl=v.coverUrl
+    ?`<img src="${v.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="">`
+    :(!isAudio(v)?`<canvas id="canvas-${v.id}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .3s" width="320" height="180"></canvas>`:'');
+  return `<div class="card-outer">
+    <div class="video-card" onclick="playVideo(${v.id})">
+      <div class="thumb-wrap${isAudio(v)?' is-audio':''}">
+        <span class="thumb-icon">${isAudio(v)?'🎵':'▶'}</span>
+        ${thumbEl}
+        <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
       </div>
-      <div class="video-meta"><span class="video-cat">${v.category||'Autre'}</span>${isAudio(v)?'<span class="badge-mp3">MP3</span>':''}<span class="video-size">${fmtSize(v.size)}</span></div>
+      <div class="video-info">
+        <div class="video-title">${v.name}</div>
+        <div class="video-meta"><span class="video-cat">${v.category||'Autre'}</span>${isAudio(v)?'<span class="badge-mp3">MP3</span>':''}<span class="video-size">${fmtSize(v.size)}</span></div>
+      </div>
+    </div>
+    <div class="card-action-bar">
+      <button class="card-menu-btn-ext" onclick="openCtxMenu(event,${v.id},'video')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        Options
+      </button>
     </div>
   </div>`;
 }
+
 function seriesCardHTML(s){
   const epCount=videos.filter(v=>v.seriesId===s.id).length;
-  return `<div class="video-card" onclick="showPage('series-detail',${s.id})">
-    <div class="thumb-wrap"><span class="thumb-icon">📺</span>
-      ${s.coverUrl?`<img src="${s.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:''}
-      <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
-    </div>
-    <div class="video-info">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-        <div class="video-title" style="flex:1;margin-bottom:0">${s.name}</div>
-        <button style="flex-shrink:0;background:rgba(255,255,255,0.08);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;padding:0" onclick="event.stopPropagation();openCtxMenu(event,${s.id},'series')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+  return `<div class="card-outer">
+    <div class="video-card" onclick="showPage('series-detail',${s.id})">
+      <div class="thumb-wrap">
+        <span class="thumb-icon">📺</span>
+        ${s.coverUrl?`<img src="${s.coverUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:''}
+        <div class="video-overlay"><div class="play-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
       </div>
-      <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Série</span><span class="video-size">${epCount} épisode${epCount!==1?'s':''}</span></div>
+      <div class="video-info">
+        <div class="video-title">${s.name}</div>
+        <div class="video-meta"><span class="video-cat" style="background:rgba(168,85,247,.12);color:#a855f7">Série</span><span class="video-size">${epCount} épisode${epCount!==1?'s':''}</span></div>
+      </div>
+    </div>
+    <div class="card-action-bar">
+      <button class="card-menu-btn-ext" onclick="openCtxMenu(event,${s.id},'series')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        Options
+      </button>
     </div>
   </div>`;
 }
@@ -1392,7 +1392,6 @@ document.addEventListener('keydown',e=>{
   if(e.key===' '&&currentId!==null){e.preventDefault();vid.paused?vid.play():vid.pause()}
 });
 document.getElementById('playerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePlayer()});
-// Stop hero timer when tab hidden
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopHeroTimer();else startHeroTimer()});
 
 // ══ SERVICE WORKER ══
@@ -1402,26 +1401,19 @@ if('serviceWorker' in navigator){
 }
 (function(){
   const sz=512;const cv=document.createElement('canvas');cv.width=cv.height=sz;const c=cv.getContext('2d');
-  // Black background
   c.fillStyle='#0a0a0a';c.fillRect(0,0,sz,sz);
   const cx=sz/2,cy=sz/2+10,fh=420;
   c.textAlign='center';c.textBaseline='middle';
-  // Helper to draw S
   function ds(ox,oy,color,alpha){c.save();c.globalAlpha=alpha||1;c.fillStyle=color;c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.fillText('S',cx+ox,cy+oy);c.restore();}
-  // Depth shadow layers (right+down shift = 3D depth like Netflix)
   ds(8,8,'#180000');ds(6,6,'#280000');ds(4,4,'#3a0000');ds(2,2,'#500000');
-  // Main red
   ds(0,0,'#e50914');
-  // Clip to S shape for highlight overlays
   c.save();c.font='bold '+fh+'px "Arial Black",Arial,sans-serif';c.textAlign='center';c.textBaseline='middle';
-  // Diagonal gloss stripe
   const g1=c.createLinearGradient(cx-150,cy-200,cx+80,cy+200);
   g1.addColorStop(0,'rgba(255,255,255,0)');g1.addColorStop(0.38,'rgba(255,255,255,0)');
   g1.addColorStop(0.46,'rgba(255,120,120,0.5)');g1.addColorStop(0.5,'rgba(255,200,200,0.75)');
   g1.addColorStop(0.54,'rgba(255,120,120,0.5)');g1.addColorStop(0.62,'rgba(255,255,255,0)');
   g1.addColorStop(1,'rgba(255,255,255,0)');
   c.fillStyle=g1;c.fillText('S',cx,cy);
-  // Thin bright glint
   const g2=c.createLinearGradient(cx-100,cy-200,cx+60,cy+200);
   g2.addColorStop(0,'rgba(255,255,255,0)');g2.addColorStop(0.44,'rgba(255,255,255,0)');
   g2.addColorStop(0.49,'rgba(255,240,240,0.85)');g2.addColorStop(0.5,'rgba(255,255,255,1)');
