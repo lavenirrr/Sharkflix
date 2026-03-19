@@ -351,6 +351,16 @@ main{padding:0 0 100px}
       <div class="video-grid" id="grd-yt"></div>
     </div>
     <div id="sec-autres"></div>
+    <div class="section" id="sec-playlists" style="display:none">
+      <div class="section-header">
+        <div class="section-header-left"><div class="section-accent" style="background:#e63946"></div><span class="section-title">🎬 SÉRIES</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-count" id="cnt-playlists">0</span>
+          <button onclick="showPage('playlists')" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;padding:2px 6px;border-radius:4px;transition:.15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">Tout voir →</button>
+        </div>
+      </div>
+      <div class="pl-grid" id="grd-playlists" style="padding:0 24px"></div>
+    </div>
     <div id="main-empty" style="display:none;padding:80px 24px;text-align:center;opacity:.35">
       <div style="font-size:64px;margin-bottom:16px">🎬</div>
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;margin-bottom:10px">AUCUNE VIDÉO</h2>
@@ -1264,6 +1274,20 @@ function renderSections(){
       <div class="video-grid">${vids.map(v=>cardHTML(v)).join('')}</div>
     </div>`;
   }).join('');
+  // Playlists (Séries) sur la page principale
+  const secPl=document.getElementById('sec-playlists');
+  if(playlists.length){
+    secPl.style.display='';
+    document.getElementById('cnt-playlists').textContent=playlists.length;
+    document.getElementById('grd-playlists').innerHTML=playlists.map(pl=>{
+      const count=pl.videoIds.filter(id=>videos.find(v=>v.id===id)).length;
+      return `<div class="pl-card" onclick="showPage('pl-detail',${pl.id})">
+        <div class="pl-cover">${pl.coverUrl?`<img src="${pl.coverUrl}">`:'🎵'}<div class="pl-overlay"><div class="play-btn" onclick="event.stopPropagation();playPl(${pl.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>
+        <div class="pl-info"><div class="pl-name">${pl.name}</div><div class="pl-count">${count} vidéo${count!==1?'s':''}</div></div>
+      </div>`;
+    }).join('');
+  } else secPl.style.display='none';
+
   // Pour l'empty state, on compte quand même toutes les vidéos visibles (hors Autre)
   const visibleCount=videos.filter(v=>v.category!=='Autre').length;
   document.getElementById('main-empty').style.display=visibleCount?'none':'';
